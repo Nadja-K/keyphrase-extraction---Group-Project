@@ -81,8 +81,8 @@ def test_with_document():
 
 
 def calculate_f_score(references, extracted):
-    print("\nUncontrolled unstemmed reference keyphrases: %s" % references)
-    print("Extracted keyphrases: %s" % extracted)
+    # print("\nUncontrolled unstemmed reference keyphrases: %s" % references)
+    # print("Extracted keyphrases: %s" % extracted)
 
     true_positive = 0
     false_positive = 0
@@ -122,7 +122,7 @@ def extract_keyphrases(model, file, normalization=None, n_grams=3, n_keyphrases=
 
     elif model in [SingleRank]:
         extractor.candidate_selection(pos=pos)
-        extractor.candidate_weighting(window=2, pos=pos)
+        extractor.candidate_weighting(window=10, pos=pos)
 
     elif model in [TopicRank, MultipartiteRank]:
         stoplist = list(punctuation)
@@ -183,6 +183,8 @@ def calculate_model_f_score(model, input_dir, references, frequency_file=None, l
 
 
 def semeval_testing():
+    # reference values http://aclweb.org/anthology/C16-2015
+
     semeval_test_folder = "../ake-datasets/datasets/SemEval-2010/test"
     semeval_combined_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
     semeval_combined_stemmed = pke.utils.load_references(semeval_combined_stemmed_file)
@@ -206,59 +208,64 @@ def semeval_testing():
 
 
 def inspec_testing():
+    # reference values for the uncontrolled keyphrases: https://arxiv.org/pdf/1801.04470.pdf
+    # Anm.: Die Werte im Paper scheinen auf den uncontrolled keyphrases zu basieren
+
     inspec_test_folder = "../ake-datasets/datasets/Inspec/test"
-
-    inspec_controlled_file = "../ake-datasets/datasets/Inspec/references/test.contr.json"
     inspec_controlled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.contr.stem.json"
+    inspec_uncontrolled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
+    inspec_controlled_stemmed = pke.utils.load_references(inspec_controlled_stemmed_file)
+    inspec_uncontrolled_stemmed = pke.utils.load_references(inspec_uncontrolled_stemmed_file)
 
-    with open(inspec_controlled_file) as f:
-        inspec_controlled = json.load(f)
-
-    with open(inspec_controlled_stemmed_file) as f:
-        inspec_controlled_stemmed = json.load(f)
-
-    true_positive_total = 0
-    false_positive_total = 0
-    false_negative_total = 0
-    for file in glob.glob(inspec_test_folder + '/*'):
-        filename = os.path.splitext(os.path.basename(file))[0]
-        print("\nUncontrolled unstemmed reference keyphrases: %s" % (inspec_controlled[filename]))
-        print("Extracted keyphrases: %s" % (tfidf(file, n_keyphrases=10)))
-
-        keyphrases = tfidf(file, n_keyphrases=10)
-        true_positive = 0
-        false_positive = 0
-        for keyphrase, score in keyphrases:
-            if keyphrase in inspec_controlled[filename]:
-                true_positive += 1
-            else:
-                false_positive += 1
-        false_negative = len(inspec_controlled[filename]) - true_positive
-
-        precision = true_positive / (true_positive + false_positive)
-        recall = true_positive / (true_positive + false_negative)
-        if precision == 0 or recall == 0:
-            f_score = 0
-        else:
-            f_score = ((2 * precision * recall) / (precision + recall))
-
-        true_positive_total += true_positive
-        false_positive_total += false_positive
-        false_negative_total += false_negative
-        print(precision, recall, f_score)
+    # compute_df('../ake-datasets/datasets/Inspec/train',
+    #            '../ake-datasets/datasets/Inspec/Inspec_df_counts.tsv.gz', extension="xml")
+    # compute_lda_model('../ake-datasets/datasets/Inspec/train',
+    #                   '../ake-datasets/datasets/Inspec/lda_model.tsv.gz', extension="xml")
+    models = [
+                            # own macro f-score vs. paper macro f-score
+        TextRank,         # 34.23%/14.88% vs 15.28% with 1.0-top/0.33-top
+        # SingleRank,       # 34.44% vs 36.51%
+        # TopicRank,        # 28.42% vs 29.02%
+        # MultipartiteRank  # 29.29% vs 30.01%
+    ]
+    for m in models:
+        print("Computing the F-Score for the Inspec Dataset with {}".format(m))
+        # precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, inspec_test_folder,
+        #                                                                           inspec_controlled_stemmed,
+        #                                                                           '../ake-datasets/datasets/Inspec/Inspec_df_counts.tsv.gz',
+        #                                                                           '../ake-datasets/datasets/Inspec/lda_model.tsv.gz')
+        precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, inspec_test_folder,
+                                                                                  inspec_uncontrolled_stemmed,
+                                                                                  '../ake-datasets/datasets/Inspec/Inspec_df_counts.tsv.gz',
+                                                                                  '../ake-datasets/datasets/Inspec/lda_model.tsv.gz')
+        print("Micro average precision: %s, recall: %s, f_score: %s" % (precision, recall, micro_f_score))  # <-- this is used in the SemEval-2010 competition https://www.aclweb.org/anthology/S10-1004
+        print("Macro average f-score: %s" % macro_f_score)  # <-- this is used in the paper mentioned above for the reference values
 
 
-    precision = true_positive_total / (true_positive_total + false_positive_total)
-    recall = true_positive_total / (true_positive_total + false_negative_total)
-    if precision == 0 or recall == 0:
-        f_score = 0
-    else:
-        f_score = ((2 * precision * recall) / (precision + recall))
-    print("Total precision, recall and f_score")
-    print(precision, recall, f_score)
+def duc_testing():
+    # reference values for the uncontrolled keyphrases: https://arxiv.org/pdf/1801.04470.pdf
 
+    duc_test_folder = "../ake-datasets/datasets/DUC-2001/test"
+    duc_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
+    duc_stemmed = pke.utils.load_references(duc_stemmed_file)
+
+    models = [
+                            # own macro f-score vs. paper macro f-score
+        # TextRank,         #  12.35% vs 15.24% with 1.0-top/0.33-top
+        # SingleRank,       # 24.97% vs 27.51%
+        # TopicRank,        # 22.89% vs 24.04%
+        MultipartiteRank  # 25.06% vs 25.28%
+    ]
+    for m in models:
+        print("Computing the F-Score for the DUC-2001 Dataset with {}".format(m))
+        precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, duc_test_folder,
+                                                                                  duc_stemmed,
+                                                                                  None, None)
+        print("Micro average precision: %s, recall: %s, f_score: %s" % (precision, recall, micro_f_score))  # <-- this is used in the SemEval-2010 competition https://www.aclweb.org/anthology/S10-1004
+        print("Macro average f-score: %s" % macro_f_score)  # <-- this is used in the paper mentioned above for the reference values
 
 
 if __name__ == '__main__':
     # inspec_testing()
-    semeval_testing()
+    # semeval_testing()
+    duc_testing()
