@@ -33,53 +33,6 @@ def compute_lda_model(input_dir, output_file, extension="xml"):
                                   normalization="stemming")
 
 
-
-def topic_rank(input_path, normalization=None):
-    extractor = pke.unsupervised.TopicRank()
-
-    pos = {'NOUN', 'PROPN', 'ADJ'}
-    stoplist = list(punctuation)
-    stoplist += ['-lrb-', '-rrb-', '-lcb-', '-rcb-', '-lsb-', '-rsb-']
-    stoplist += stopwords.words('english')
-
-    extractor.load_document(input=input_path, normalization=normalization)
-    extractor.candidate_selection(pos=pos, stoplist=stoplist)
-    extractor.candidate_weighting(threshold=0.74, method='average')
-
-    keyphrases = extractor.get_n_best(n=10, stemming=(normalization == "stemming"))
-
-    return keyphrases
-
-
-def topic_page_rank(input_path, lda_model_file):
-    extractor = pke.unsupervised.TopicalPageRank()
-
-    pos = {'NOUN', 'PROPN', 'ADJ'}
-    grammar = "NP: {<ADJ>*<NOUN|PROPN>+}"
-
-    extractor.load_document(input=input_path, language='en', normalization=None)
-    extractor.candidate_selection(grammar=grammar)
-    extractor.candidate_weighting(window=10, pos=pos, lda_model=lda_model_file)
-
-    keyphrases = extractor.get_n_best(n=10)
-
-    return keyphrases
-
-
-def test_with_document():
-    # universal test file
-    input_doc = "..\\test_docs\\test.final"
-
-    # stuff that needs to be done only once
-    # compute_df('..\\test_docs', '..\\test_docs\\document_frequency_counts.tsv.gz', extension="final")
-    # compute_lda_model('..\\test_docs', '..\\test_docs\\lda_model.tsv.gz', extension="final")
-
-    # using various baselines
-    # print(tfidf(input_doc, frequency_file='..\\test_docs\\document_frequency_counts.tsv.gz'))
-    # print(topic_rank(input_doc))
-    print(topic_page_rank(input_doc, '..\\test_docs\\lda_model.tsv.gz'))
-
-
 def calculate_f_score(references, extracted):
     # print("\nUncontrolled unstemmed reference keyphrases: %s" % references)
     # print("Extracted keyphrases: %s" % extracted)
@@ -118,7 +71,7 @@ def extract_keyphrases(model, file, normalization=None, n_grams=3, n_keyphrases=
         extractor.candidate_weighting(df=df, encoding="utf-8")
 
     elif model in [TextRank]:
-        extractor.candidate_weighting(window=2, pos=pos, top_percent=0.33)
+        extractor.candidate_weighting(window=2, pos=pos, top_percent=1.0) # 0.33)
 
     elif model in [SingleRank]:
         extractor.candidate_selection(pos=pos)
@@ -198,7 +151,10 @@ def semeval_testing():
     #     TextRank, KPMiner, YAKE, FirstPhrases
     # ]
     models = [
-        KPMiner
+        # TfIdf,          # 15.2% vs 16.4%
+        # TopicRank,      # 12.6 vs 12.6%
+        # SingleRank,     # 1.9% vs 1.8%
+        KPMiner         # 19.4% vs 19.8%
     ]
     for m in models:
         print("Computing the F-Score for the SemEval-2010 Dataset with {}".format(m))
@@ -251,10 +207,10 @@ def duc_testing():
 
     models = [
                             # own macro f-score vs. paper macro f-score
-        # TextRank,         #  12.35% vs 15.24% with 1.0-top/0.33-top
+        TextRank,         #  17.43%/12.35% vs 15.24% with 1.0-top/0.33-top
         # SingleRank,       # 24.97% vs 27.51%
         # TopicRank,        # 22.89% vs 24.04%
-        MultipartiteRank  # 25.06% vs 25.28%
+        # MultipartiteRank  # 25.06% vs 25.28%
     ]
     for m in models:
         print("Computing the F-Score for the DUC-2001 Dataset with {}".format(m))
@@ -265,7 +221,31 @@ def duc_testing():
         print("Macro average f-score: %s" % macro_f_score)  # <-- this is used in the paper mentioned above for the reference values
 
 
+def nus_testing():
+    # reference values for the uncontrolled keyphrases: https://arxiv.org/pdf/1801.04470.pdf
+
+    nus_test_folder = "../ake-datasets/datasets/NUS/test"
+    nus_stemmed_file = "../ake-datasets/datasets/NUS/references/test.combined.stem.json" # <-- this one is used in the paper mentioned above
+    nus_stemmed = pke.utils.load_references(nus_stemmed_file)
+
+    models = [
+                            # own macro f-score vs. paper macro f-score
+        # TextRank,         # 0.68%/1.77% vs 6.56% with 1.0-top/0.33-top
+        # SingleRank,       # 2.3% vs 5.13%
+        # TopicRank,        # 15.21% vs 13.81%
+        MultipartiteRank  # 18.01% vs 16.92%
+    ]
+    for m in models:
+        print("Computing the F-Score for the NUS Dataset with {}".format(m))
+        precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, nus_test_folder,
+                                                                                  nus_stemmed,
+                                                                                  None, None)
+        print("Micro average precision: %s, recall: %s, f_score: %s" % (precision, recall, micro_f_score))  # <-- this is used in the SemEval-2010 competition https://www.aclweb.org/anthology/S10-1004
+        print("Macro average f-score: %s" % macro_f_score)  # <-- this is used in the paper mentioned above for the reference values
+
+
 if __name__ == '__main__':
     # inspec_testing()
     # semeval_testing()
-    duc_testing()
+    # duc_testing()
+    nus_testing()
