@@ -13,6 +13,7 @@ from pke.unsupervised import (
     TextRank, TfIdf, KPMiner,
     YAKE, FirstPhrases
 )
+from KeyCluster import KeyCluster
 
 def compute_df(input_dir, output_file, extension="xml"):
     stoplist = list(punctuation)
@@ -100,6 +101,10 @@ def extract_keyphrases(model, file, normalization=None, n_grams=3, n_keyphrases=
     elif model in [KPMiner]:
         extractor.candidate_selection(lasf=3, cutoff=400)
         extractor.candidate_weighting(df=df, alpha=2.3, sigma=3.0, encoding="utf-8")
+
+    else:
+        extractor.candidate_selection()
+        extractor.candidate_weighting()
 
     return extractor.get_n_best(n=n_keyphrases, stemming=(normalization == 'stemming'))
 
@@ -244,8 +249,27 @@ def nus_testing():
         print("Macro average f-score: %s" % macro_f_score)  # <-- this is used in the paper mentioned above for the reference values
 
 
+def custom_testing():
+    inspec_test_folder = "../ake-datasets/datasets/Inspec/test"
+    inspec_controlled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.contr.stem.json"
+    inspec_uncontrolled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
+    inspec_controlled_stemmed = pke.utils.load_references(inspec_controlled_stemmed_file)
+    inspec_uncontrolled_stemmed = pke.utils.load_references(inspec_uncontrolled_stemmed_file)
+
+    i = 0
+    for file in glob.glob(inspec_test_folder + '/*'):
+        if i >= 0:
+            filename = os.path.splitext(os.path.basename(file))[0]
+            print(file)
+            reference = inspec_uncontrolled_stemmed[filename]
+            keyphrases = extract_keyphrases(KeyCluster, file, normalization="stemming", n_keyphrases=30)
+            print(keyphrases)
+        i += 1
+        if i == 10:
+            break
 if __name__ == '__main__':
     # inspec_testing()
     # semeval_testing()
     # duc_testing()
-    nus_testing()
+    # nus_testing()
+    custom_testing()
