@@ -14,6 +14,10 @@ from pke.unsupervised import (
     YAKE, FirstPhrases
 )
 from KeyCluster import KeyCluster
+from ClusterFeatureCalculator import CooccurrenceClusterFeature
+from CandidateTermSelector import CandidateTermSelector
+from Cluster import HierarchicalClustering
+from KeyphraseSelector import KeyphraseSelector
 
 def compute_df(input_dir, output_file, extension="xml"):
     stoplist = list(punctuation)
@@ -57,7 +61,7 @@ def calculate_f_score(references, extracted):
     return precision, recall, f_score, true_positive, false_positive
 
 
-def extract_keyphrases(model, file, normalization=None, n_grams=3, n_keyphrases=10, frequency_file=None, lda_model=None):
+def extract_keyphrases(model, file, params=None, normalization=None, n_grams=3, n_keyphrases=10, frequency_file=None, lda_model=None):
     extractor = model()
     extractor.load_document(file, normalization=normalization)
 
@@ -102,6 +106,14 @@ def extract_keyphrases(model, file, normalization=None, n_grams=3, n_keyphrases=
         extractor.candidate_selection(lasf=3, cutoff=400)
         extractor.candidate_weighting(df=df, alpha=2.3, sigma=3.0, encoding="utf-8")
 
+    elif model in [KeyCluster]:
+        candidate_term_selector = CandidateTermSelector()           # FIXME: auslagern
+        cooccurrence_cluster_feature = CooccurrenceClusterFeature(window=2) # FIXME: auslagern
+        cluster_method = HierarchicalClustering()                   # FIXME: auslagern
+        keyphrase_selector = KeyphraseSelector()                    # FIXME: auslagern
+        num_clusters = 0
+        extractor.candidate_selection(candidate_term_selector=candidate_term_selector)
+        extractor.candidate_weighting(cluster_feature_calculator=cooccurrence_cluster_feature, cluster_method=cluster_method, keyphrase_selector=keyphrase_selector, num_clusters=num_clusters)
     else:
         extractor.candidate_selection()
         extractor.candidate_weighting()
@@ -264,9 +276,12 @@ def custom_testing():
             reference = inspec_uncontrolled_stemmed[filename]
             keyphrases = extract_keyphrases(KeyCluster, file, normalization="stemming", n_keyphrases=30)
             print(keyphrases)
+            print(reference)
+            print()
         i += 1
-        if i == 10:
+        if i == 30:
             break
+
 if __name__ == '__main__':
     # inspec_testing()
     # semeval_testing()
