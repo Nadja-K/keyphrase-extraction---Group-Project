@@ -19,6 +19,7 @@ class KeyCluster(LoadFile):
         if num_clusters == 0:
             num_clusters = int(2./3. * len(self.candidate_terms))
         clusters = cluster_method.calc_clusters(num_clusters, self.cluster_features)
+        # FIXME: get_exemplar_terms in extra klasse auslagern
         cluster_exemplar_terms = cluster_method.get_exemplar_terms(clusters, self.cluster_features)
 
         # Create candidate keyphrases

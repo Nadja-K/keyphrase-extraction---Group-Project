@@ -268,19 +268,27 @@ def custom_testing():
     inspec_controlled_stemmed = pke.utils.load_references(inspec_controlled_stemmed_file)
     inspec_uncontrolled_stemmed = pke.utils.load_references(inspec_uncontrolled_stemmed_file)
 
-    i = 0
-    for file in glob.glob(inspec_test_folder + '/*'):
-        if i >= 0:
-            filename = os.path.splitext(os.path.basename(file))[0]
-            print(file)
-            reference = inspec_uncontrolled_stemmed[filename]
-            keyphrases = extract_keyphrases(KeyCluster, file, normalization="stemming", n_keyphrases=30)
-            print(keyphrases)
-            print(reference)
-            print()
-        i += 1
-        if i == 30:
-            break
+    m = KeyCluster
+    print("Computing the F-Score for the NUS Dataset with {}".format(m))
+    precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, inspec_test_folder,
+                                                                              inspec_uncontrolled_stemmed,
+                                                                              None, None)
+    print("Micro average precision: %s, recall: %s, f_score: %s" % (precision, recall, micro_f_score))
+    print("Macro average f-score: %s" % macro_f_score)
+
+    # i = 0
+    # for file in glob.glob(inspec_test_folder + '/*'):
+    #     if i >= 0:
+    #         filename = os.path.splitext(os.path.basename(file))[0]
+    #         print(file)
+    #         reference = inspec_uncontrolled_stemmed[filename]
+    #         keyphrases = extract_keyphrases(KeyCluster, file, normalization="stemming", n_keyphrases=30)
+    #         print(keyphrases)
+    #         print(reference)
+    #         print()
+    #     i += 1
+    #     if i == 30:
+    #         break
 
 if __name__ == '__main__':
     # inspec_testing()

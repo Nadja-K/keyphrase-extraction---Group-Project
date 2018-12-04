@@ -9,16 +9,16 @@ class HierarchicalClustering:
     def calc_clusters(self, num_clusters, cluster_features):
         linked = linkage(cluster_features, 'ward')
 
-        # FIXME: remove the plot stuff
-        plt.figure(figsize=(10, 7))
-        dendrogram(linked,
-                   truncate_mode='lastp',
-                   p=30,
-                   orientation='top',
-                   distance_sort='descending',
-                   show_contracted=True,
-                   show_leaf_counts=True)
-        plt.show()
+        # # FIXME: remove the plot stuff
+        # plt.figure(figsize=(10, 7))
+        # dendrogram(linked,
+        #            truncate_mode='lastp',
+        #            p=30,
+        #            orientation='top',
+        #            distance_sort='descending',
+        #            show_contracted=True,
+        #            show_leaf_counts=True)
+        # plt.show()
 
         clusters = fcluster(linked, num_clusters, criterion='maxclust')
         return clusters
