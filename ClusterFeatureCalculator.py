@@ -21,12 +21,10 @@ class CooccurrenceClusterFeature:
         # Calculate cooccurrence_matrix
         cooccurrence_matrix = np.zeros((len(filtered_candidate_terms), len(filtered_candidate_terms)))
         for sentence in list(context.sentences):
-            words = sentence.stems
-            pos_tag = sentence.pos
+            words = sentence.stems.copy()
 
             # Remove words/symbols that don't appear in the punctuation filtered tokens list
             for index in sorted([i for i, x in enumerate(words) if x not in cooccurrence_terms], reverse=True):
-                pos_tag.pop(index)
                 words.pop(index)
 
             #

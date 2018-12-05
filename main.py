@@ -19,6 +19,20 @@ from CandidateTermSelector import CandidateTermSelector
 from Cluster import HierarchicalClustering
 from KeyphraseSelector import KeyphraseSelector
 
+from nltk.tag.mapping import map_tag
+
+def custom_normalize_POS_tags(self):
+    """Normalizes the PoS tags from udp-penn to UD."""
+
+    if self.language == 'en':
+        # iterate throughout the sentences
+        for i, sentence in enumerate(self.sentences):
+            self.sentences[i].pos = [map_tag('en-ptb', 'universal', tag) for tag in sentence.pos]
+    elif self.language == 'de':
+        # iterate throughout the sentences
+        for i, sentence in enumerate(self.sentences):
+            self.sentences[i].pos = [map_tag('de-tiger', 'universal', tag) for tag in sentence.pos]
+
 def compute_df(input_dir, output_file, extension="xml"):
     stoplist = list(punctuation)
     compute_document_frequency(input_dir=input_dir,
@@ -61,9 +75,9 @@ def calculate_f_score(references, extracted):
     return precision, recall, f_score, true_positive, false_positive
 
 
-def extract_keyphrases(model, file, params=None, normalization=None, n_grams=3, n_keyphrases=10, frequency_file=None, lda_model=None):
+def extract_keyphrases(model, file, params=None, language='en', normalization=None, n_grams=3, n_keyphrases=10, frequency_file=None, lda_model=None):
     extractor = model()
-    extractor.load_document(file, normalization=normalization)
+    extractor.load_document(file, language=language, normalization=normalization)
 
     df = None
     pos = {'NOUN', 'PROPN', 'ADJ'}
@@ -72,7 +86,8 @@ def extract_keyphrases(model, file, params=None, normalization=None, n_grams=3, 
         df = pke.load_document_frequency_file(input_file=frequency_file, encoding="utf-8")
 
     if model in [TfIdf]:
-        extractor.candidate_selection(n=n_grams, stoplist=list(punctuation))
+        # extractor.candidate_selection(n=n_grams, stoplist=list(punctuation))
+        extractor.candidate_selection(n=n_grams, stoplist=extractor.stoplist)
         extractor.candidate_weighting(df=df, encoding="utf-8")
 
     elif model in [TextRank]:
@@ -121,7 +136,7 @@ def extract_keyphrases(model, file, params=None, normalization=None, n_grams=3, 
     return extractor.get_n_best(n=n_keyphrases, stemming=(normalization == 'stemming'))
 
 
-def calculate_model_f_score(model, input_dir, references, frequency_file=None, lda_model=None):
+def calculate_model_f_score(model, input_dir, references, language='en', frequency_file=None, lda_model=None):
     true_positive_total = 0
     num_extracted_keyphrases = 0
     num_reference_keyphrases = 0
@@ -132,7 +147,7 @@ def calculate_model_f_score(model, input_dir, references, frequency_file=None, l
         filename = os.path.splitext(os.path.basename(file))[0]
         reference = references[filename]
 
-        keyphrases = extract_keyphrases(model, file, normalization="stemming", frequency_file=frequency_file, lda_model=lda_model)
+        keyphrases = extract_keyphrases(model, file, language=language, normalization="stemming", frequency_file=frequency_file, lda_model=lda_model)
         precision, recall, f_score, true_positive, false_positive = calculate_f_score(reference, keyphrases)
 
         true_positive_total += true_positive
@@ -150,7 +165,6 @@ def calculate_model_f_score(model, input_dir, references, frequency_file=None, l
 
     macro_f_score = (f_score_total / num_documents)
     return precision, recall, micro_f_score, macro_f_score
-
 
 def semeval_testing():
     # reference values http://aclweb.org/anthology/C16-2015
@@ -268,29 +282,35 @@ def custom_testing():
     inspec_controlled_stemmed = pke.utils.load_references(inspec_controlled_stemmed_file)
     inspec_uncontrolled_stemmed = pke.utils.load_references(inspec_uncontrolled_stemmed_file)
 
-    m = KeyCluster
-    print("Computing the F-Score for the NUS Dataset with {}".format(m))
-    precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, inspec_test_folder,
-                                                                              inspec_uncontrolled_stemmed,
-                                                                              None, None)
-    print("Micro average precision: %s, recall: %s, f_score: %s" % (precision, recall, micro_f_score))
-    print("Macro average f-score: %s" % macro_f_score)
+    heise_folder = "../ake-datasets/datasets/Heise"
 
-    # i = 0
-    # for file in glob.glob(inspec_test_folder + '/*'):
-    #     if i >= 0:
-    #         filename = os.path.splitext(os.path.basename(file))[0]
-    #         print(file)
-    #         reference = inspec_uncontrolled_stemmed[filename]
-    #         keyphrases = extract_keyphrases(KeyCluster, file, normalization="stemming", n_keyphrases=30)
-    #         print(keyphrases)
-    #         print(reference)
-    #         print()
-    #     i += 1
-    #     if i == 30:
-    #         break
+    m = TopicRank # KeyCluster
+    # print("Computing the F-Score for the NUS Dataset with {}".format(m))
+    # precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, inspec_test_folder,
+    #                                                                           inspec_uncontrolled_stemmed,
+    #                                                                           None, None)
+    # print("Micro average precision: %s, recall: %s, f_score: %s" % (precision, recall, micro_f_score))
+    # print("Macro average f-score: %s" % macro_f_score)
+
+    i = 0
+    for file in glob.glob(heise_folder + '/*'):
+        if i >= 0:
+            filename = os.path.splitext(os.path.basename(file))[0]
+            print(file)
+            # reference = inspec_uncontrolled_stemmed[filename]
+            keyphrases = extract_keyphrases(m, file, language='de', normalization="stemming", n_keyphrases=30)
+            print(keyphrases)
+            # print(reference)
+            print()
+        i += 1
+        if i == 2:
+            break
 
 if __name__ == '__main__':
+    # Overwrite a few functions and variables so that the german language can be supported
+    pke.LoadFile.normalize_POS_tags = custom_normalize_POS_tags
+    pke.base.ISO_to_language['de'] = 'german'
+
     # inspec_testing()
     # semeval_testing()
     # duc_testing()
