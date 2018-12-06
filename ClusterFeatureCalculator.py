@@ -53,9 +53,9 @@ class PPMIClusterFeature(CooccurrenceClusterFeature):
     def __init__(self, window=2):
         super().__init__(window=window)
 
-    def calc_cluster_features(self):
+    def calc_cluster_features(self, context, candidate_terms):
         ppmi_matrix = []
-        cooccurrence_matrix = super().calc_cluster_features()
+        cooccurrence_matrix = super().calc_cluster_features(context, candidate_terms)
 
         # FIXME
 

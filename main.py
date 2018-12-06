@@ -13,11 +13,11 @@ from pke.unsupervised import (
 )
 from KeyCluster import KeyCluster
 from ClusterFeatureCalculator import CooccurrenceClusterFeature
-from CandidateTermSelector import CandidateTermSelector
+from CandidateSelector import CandidateSelector
 from Cluster import HierarchicalClustering
 from KeyphraseSelector import KeyphraseSelector
 from evaluation import Evaluator
-
+from Cluster import euclid_dist
 from nltk.tag.mapping import map_tag
 
 
@@ -215,33 +215,45 @@ class KeyphraseExtractor:
 
         elif model in [KeyCluster]:
             """
-            :param CandidateTermSelector candidate_term_selector
+            :param CandidateSelector candidate_selector
+            :param dict candidate_selector_args
             :param ClusterFeatureCalculator cluster_feature_calculator
             :param Cluster cluster_method
+            :param func exemplar_dist_func
             :param KeyphraseSelector keyphrase_selector
             :param int window
             :param func cluster_calc
             :param dict cluster_calc_args
-            FIXME
+            :param str regex
             """
-            # FIXME
             window = params.get('window', 2)
-            candidate_term_selector = params.get('candidate_term_selector', CandidateTermSelector())
+
+            candidate_selector = params.get('candidate_selector', CandidateSelector())
+            candidate_selector_args = params.get('candidate_selector_args', {})
+
             cluster_feature_calculator = params.get('cluster_feature_calculator', CooccurrenceClusterFeature(window=window))
             cluster_method = params.get('cluster_method', HierarchicalClustering())
+            exemplar_terms_dist_func = params.get('exemplar_terms_dist_func', euclid_dist)
+
             keyphrase_selector = params.get('keyphrase_selector', KeyphraseSelector())
+            regex = params.get('regex', 'j*n+')
 
-            extractor.candidate_selection(candidate_term_selector=candidate_term_selector)
+            # Cluster Candidate Selection
+            extractor.candidate_selection(candidate_selector=candidate_selector, **candidate_selector_args)
 
+            # Calculate number of Clusters (if the cluster algorithm needs this)
             cluster_calc = params.get('cluster_calc', self.num_cluster)
             cluster_calc_args = params.get('cluster_calc_args', {'factor': 2/3})
             cluster_calc_args['context'] = extractor
             num_clusters = cluster_calc(**cluster_calc_args)
 
+            # Candidate Clustering, Exemplar Term Selection, Keyphrase Selection
             extractor.candidate_weighting(cluster_feature_calculator=cluster_feature_calculator,
                                           cluster_method=cluster_method,
+                                          exemplar_terms_dist_func=exemplar_terms_dist_func,
                                           keyphrase_selector=keyphrase_selector,
-                                          num_clusters=num_clusters)
+                                          num_clusters=num_clusters,
+                                          regex=regex)
 
         else:
             extractor.candidate_selection()
@@ -304,10 +316,12 @@ kwargs = {
     # 'lasf': ,
     # 'cutoff': ,
     # 'sigma': ,
-    # 'candidate_term_selector': ,
+    # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
+    'candidate_selector_args': {'n_grams': 1},
     # 'cluster_feature_calculator': ,
     # 'cluster_method': ,
     # 'keyphrase_selector': ,
+    # 'regex': ,
     # 'cluster_calc': ,
     'cluster_calc_args': {'num_clusters': 10}
 }

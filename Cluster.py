@@ -1,29 +1,16 @@
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 from matplotlib import pyplot as plt
 import numpy as np
+from typing import Callable
+from abc import ABCMeta, abstractmethod
 
 
-# Hierarchical Clustering (good explanation: https://joernhees.de/blog/2015/08/26/scipy-hierarchical-clustering-and-
-# dendrogram-tutorial/)
-class HierarchicalClustering:
-    def calc_clusters(self, num_clusters, cluster_features):
-        linked = linkage(cluster_features, 'ward')
+def euclid_dist(cluster_features, mean_cluster_features):
+    return np.linalg.norm(cluster_features - mean_cluster_features)
 
-        # # FIXME: remove the plot stuff
-        # plt.figure(figsize=(10, 7))
-        # dendrogram(linked,
-        #            truncate_mode='lastp',
-        #            p=30,
-        #            orientation='top',
-        #            distance_sort='descending',
-        #            show_contracted=True,
-        #            show_leaf_counts=True)
-        # plt.show()
 
-        clusters = fcluster(linked, num_clusters, criterion='maxclust')
-        return clusters
-
-    def get_exemplar_terms(self, clusters, cluster_features):
+class Clustering(metaclass=ABCMeta):
+    def get_exemplar_terms(self, clusters, cluster_features, dist_func: Callable = euclid_dist):
         cluster_exemplar_terms = dict()
 
         # Derive the centroids of each cluster based on the euclidean distance
@@ -47,7 +34,7 @@ class HierarchicalClustering:
 
         # Get the centroid for each cluster based on the euclidean distance to the mean
         for index, cluster in enumerate(clusters):
-            dist = np.linalg.norm(cluster_features[index] - cluster_exemplar_terms[cluster]['mean'])
+            dist = dist_func(cluster_features[index], cluster_exemplar_terms[cluster]['mean'])
 
             if dist < cluster_exemplar_terms[cluster]['centroid_dist']:
                 cluster_exemplar_terms[cluster]['centroid'] = cluster_features[index]
@@ -57,21 +44,35 @@ class HierarchicalClustering:
         return cluster_exemplar_terms
 
 
-class SpectralClustering:
+# Hierarchical Clustering (good explanation: https://joernhees.de/blog/2015/08/26/scipy-hierarchical-clustering-and-
+# dendrogram-tutorial/)
+class HierarchicalClustering(Clustering):
+    def calc_clusters(self, num_clusters, cluster_features):
+        linked = linkage(cluster_features, 'ward')
+
+        # # FIXME: remove the plot stuff
+        # plt.figure(figsize=(10, 7))
+        # dendrogram(linked,
+        #            truncate_mode='lastp',
+        #            p=30,
+        #            orientation='top',
+        #            distance_sort='descending',
+        #            show_contracted=True,
+        #            show_leaf_counts=True)
+        # plt.show()
+
+        clusters = fcluster(linked, num_clusters, criterion='maxclust')
+        return clusters
+
+
+class SpectralClustering(Clustering):
     def calc_clusters(self):
         # FIXME
         pass
 
-    def get_exemplar_terms(self, clusters):
-        # FIXME
-        pass
 
-
-class AffinityPropagation:
+class AffinityPropagation(Clustering):
     def calc_clusters(self):
         # FIXME
         pass
 
-    def get_exemplar_terms(self, clusters):
-        # FIXME
-        pass

@@ -8,10 +8,10 @@ class KeyCluster(LoadFile):
         self.candidate_terms = None
         self.cluster_features = None
 
-    def candidate_selection(self, candidate_term_selector, ngrams=1, stoplist=None, **kwargs):
-        self.candidate_terms = list(candidate_term_selector.select_candidates(self, ngrams=ngrams, stoplist=stoplist))
+    def candidate_selection(self, candidate_selector, **kwargs):
+        self.candidate_terms = list(candidate_selector.select_candidates(self, **kwargs))
 
-    def candidate_weighting(self, cluster_feature_calculator, cluster_method, keyphrase_selector, num_clusters=0):
+    def candidate_weighting(self, cluster_feature_calculator, cluster_method, exemplar_terms_dist_func, keyphrase_selector, regex='j*n+', num_clusters=0):
         # Calculating term relatedness
         self.cluster_features = cluster_feature_calculator.calc_cluster_features(self, self.candidate_terms)
 
@@ -19,11 +19,10 @@ class KeyCluster(LoadFile):
         if num_clusters == 0:
             num_clusters = int(2./3. * len(self.candidate_terms))
         clusters = cluster_method.calc_clusters(num_clusters, self.cluster_features)
-        # FIXME: get_exemplar_terms in extra klasse auslagern
-        cluster_exemplar_terms = cluster_method.get_exemplar_terms(clusters, self.cluster_features)
+        cluster_exemplar_terms = cluster_method.get_exemplar_terms(clusters, self.cluster_features, exemplar_terms_dist_func)
 
         # Create candidate keyphrases
-        candidate_keyphrases = keyphrase_selector.select_candidate_keyphrases(self.sentences)
+        candidate_keyphrases = keyphrase_selector.select_candidate_keyphrases(self.sentences, regex=regex)
 
         # Select keyphrases that contain 1+ exemplar terms
         candidate_keyphrases = keyphrase_selector.filter_candidate_keyphrases(candidate_keyphrases,
@@ -34,7 +33,8 @@ class KeyCluster(LoadFile):
         # FIXME: filter out frequent single word candidate keyphrases
         ################################################################
         # FIXME: needs to be done for german as well as english?
-
+        # based on subtitles (all languages): https://github.com/hermitdave/FrequencyWords/
+        # based on wikipedia (english only): https://github.com/IlyaSemenov/wikipedia-word-frequency
 
         # Set the final candidates
         # clean the current candidates list since it is no longer accurate
