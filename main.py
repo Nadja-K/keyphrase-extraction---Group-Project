@@ -1,8 +1,6 @@
-import json
-
 import pke
 from nltk.corpus import stopwords
-from pke import compute_document_frequency
+from pke import compute_document_frequency, compute_lda_model
 from string import punctuation
 import glob
 import os
@@ -18,8 +16,10 @@ from ClusterFeatureCalculator import CooccurrenceClusterFeature
 from CandidateTermSelector import CandidateTermSelector
 from Cluster import HierarchicalClustering
 from KeyphraseSelector import KeyphraseSelector
+from evaluation import Evaluator
 
 from nltk.tag.mapping import map_tag
+
 
 def custom_normalize_POS_tags(self):
     """Normalizes the PoS tags from udp-penn to UD."""
@@ -33,248 +33,284 @@ def custom_normalize_POS_tags(self):
         for i, sentence in enumerate(self.sentences):
             self.sentences[i].pos = [map_tag('de-tiger', 'universal', tag) for tag in sentence.pos]
 
-def compute_df(input_dir, output_file, extension="xml"):
-    stoplist = list(punctuation)
-    compute_document_frequency(input_dir=input_dir,
-                               output_file=output_file,
-                               extension=extension,           # input file extension
-                               language='en',                # language of files
-                               normalization="stemming",    # use porter stemmer
-                               stoplist=stoplist)
 
+class KeyphraseExtractor:
+    def num_cluster(self, **params):
+        """
+        Default method to calculate the number of clusters for cluster-based methods.
 
-def compute_lda_model(input_dir, output_file, extension="xml"):
-    pke.utils.compute_lda_model(input_dir=input_dir,
-                                  output_file=output_file,
-                                  n_topics=500,
-                                  extension=extension,
-                                  language="en",
-                                  normalization="stemming")
+        :param int num_clusters
+        :param float factor
+        :param LoadFile context
 
+        :return: int
+        """
+        num_clusters = params.get('num_clusters', 0)
+        if num_clusters > 0:
+            return num_clusters
 
-def calculate_f_score(references, extracted):
-    # print("\nUncontrolled unstemmed reference keyphrases: %s" % references)
-    # print("Extracted keyphrases: %s" % extracted)
+        factor = params.get('factor', 1)
+        context = params.get('context', None)
+        if context is None:
+            return 10
 
-    true_positive = 0
-    false_positive = 0
-    for keyphrase, score in extracted:
-        if keyphrase in references:
-            true_positive += 1
+        return int(factor * len(context.candidate_terms))
+
+    def extract_keyphrases(self, model, file, **params):
+        language = params.get('language', 'en')
+        normalization = params.get('normalization', 'stemming')
+        frequency_file = params.get('frequency_file', None)
+        redundancy_removal = params.get('redundancy_removal', False)
+
+        extractor = model()
+        extractor.load_document(file, language=language, normalization=normalization)
+
+        df = None
+        if frequency_file is not None:
+            df = pke.load_document_frequency_file(input_file=frequency_file, encoding="utf-8")
+
+        if model in [TfIdf]:
+            """
+            :param list stoplist
+            :param int n_grams
+            :param str frequency_file
+            """
+            stoplist = params.get('stoplist', extractor.stoplist)
+            n_grams = params.get('n_grams', 3)
+
+            extractor.candidate_selection(n=n_grams, stoplist=stoplist)
+            extractor.candidate_weighting(df=df, encoding="utf-8")
+
+        elif model in [TextRank]:
+            """
+            :param int window
+            :param set pos
+            :param float top_percent
+            :param bool normalized
+            :param bool run_candidate_selection
+            """
+            window = params.get('window', 2)
+            pos = params.get('pos', ('NOUN', 'PROPN', 'ADJ'))
+            top_percent = params.get('top_percent', None)
+            normalized = params.get('normalized', False)
+
+            if params.get('run_candidate_selection', False):
+                extractor.candidate_selection(pos=pos)
+            extractor.candidate_weighting(window=window, pos=pos, top_percent=top_percent, normalized=normalized)
+
+        elif model in [SingleRank]:
+            """
+            :param set pos
+            :param int window
+            """
+            window = params.get('window', 10)
+            pos = params.get('pos', ('NOUN', 'PROPN', 'ADJ'))
+
+            extractor.candidate_selection(pos=pos)
+            extractor.candidate_weighting(window=window, pos=pos)
+
+        elif model in [TopicRank]:
+            """
+            :param list stoplist
+            :param set pos
+            :param float threshold
+            :param str method
+            :param str heuristic
+            """
+            pos = params.get('pos', ('NOUN', 'PROPN', 'ADJ'))
+            stoplist = params.get('stoplist', list(punctuation) + ['-lrb-', '-rrb-', '-lcb-', '-rcb-', '-lsb-', '-rsb-']
+                                  + stopwords.words(pke.base.ISO_to_language[params.get('language', 'en')]))
+            threshold = params.get('threshold', 0.74)
+            method = params.get('method', 'average')
+            heuristic = params.get('heuristic', None)
+            alpha = params.get('alpha', 1.1)
+
+            extractor.candidate_selection(pos=pos, stoplist=stoplist)
+            extractor.candidate_weighting(threshold=threshold, method=method, heuristic=heuristic)
+
+        elif model in [MultipartiteRank]:
+            """
+            :param list stoplist
+            :param set pos
+            :param float threshold
+            :param str method
+            :param float alpha
+            """
+            pos = params.get('pos', ('NOUN', 'PROPN', 'ADJ'))
+            stoplist = params.get('stoplist', list(punctuation) + ['-lrb-', '-rrb-', '-lcb-', '-rcb-', '-lsb-', '-rsb-']
+                                  + stopwords.words(pke.base.ISO_to_language[params.get('language', 'en')]))
+            threshold = params.get('threshold', 0.74)
+            method = params.get('method', 'average')
+            alpha = params.get('alpha', 1.1)
+
+            extractor.candidate_selection(pos=pos, stoplist=stoplist)
+            extractor.candidate_weighting(threshold=threshold, method=method, alpha=alpha)
+
+        elif model in [TopicalPageRank]:
+            """
+            :param str grammar
+            :param int window
+            :param set pos
+            :param pickle.gz lda_model
+            :param list stoplist
+            :param bool normalized
+            """
+            grammar = params.get('grammar', "NP:{<ADJ>*<NOUN|PROPN>+}")
+            window = params.get('window', 10)
+            pos = params.get('pos', ('NOUN', 'PROPN', 'ADJ'))
+            stoplist = params.get('stoplist', None)
+            normalized = params.get('normalized', False)
+            lda_model = params.get('lda_model', None)
+
+            extractor.candidate_selection(grammar=grammar)
+            extractor.candidate_weighting(window=10, pos=pos, lda_model=lda_model, stoplist=stoplist, normalized=normalized)
+
+        elif model in [PositionRank]:
+            """
+            :param str grammar
+            :param int maximum_word_number
+            :param int window
+            :param set pos
+            :param bool normalized
+            """
+            grammar = params.get('grammar', "NP:{<ADJ>*<NOUN|PROPN>+}")
+            max_word_num = params.get('maximum_word_number', 3)
+            window = params.get('window', 10)
+            pos = params.get('pos', ('NOUN', 'PROPN', 'ADJ'))
+            normalized = params.get('normalized', False)
+
+            extractor.candidate_selection(grammar=grammar, maximum_word_number=max_word_num)
+            extractor.candidate_weighting(window=window, pos=pos, normalized=normalized)
+
+        elif model in [YAKE]:
+            """
+            :param int n_grams
+            :param list stoplist
+            :param int window
+            """
+            n_grams = params.get('n_grams', 3)
+            stoplist = params.get('stoplist', None)
+            window = params.get('window', 2)
+
+            extractor.candidate_selection(n=n_grams, stoplist=stoplist)
+            extractor.candidate_weighting(window=window, stoplist=stoplist, use_stems=(normalization == 'stemming'))
+
+        elif model in [KPMiner]:
+            """
+            :param int lasf
+            :param int cutoff
+            :param list stoplist
+            :param float sigma
+            :param float alpha 
+            :param str frequency_file
+            """
+            lasf = params.get('lasf', 3)
+            cutoff = params.get('cutoff', 400)
+            stoplist = params.get('stoplist', None)
+            sigma = params.get('sigma', 3.0)
+            alpha = params.get('alpha', 2.3)
+
+            extractor.candidate_selection(lasf=lasf, cutoff=cutoff, stoplist=stoplist)
+            extractor.candidate_weighting(df=df, alpha=alpha, sigma=sigma, encoding="utf-8")
+
+        elif model in [KeyCluster]:
+            """
+            :param CandidateTermSelector candidate_term_selector
+            :param ClusterFeatureCalculator cluster_feature_calculator
+            :param Cluster cluster_method
+            :param KeyphraseSelector keyphrase_selector
+            :param int window
+            :param func cluster_calc
+            :param dict cluster_calc_args
+            FIXME
+            """
+            # FIXME
+            window = params.get('window', 2)
+            candidate_term_selector = params.get('candidate_term_selector', CandidateTermSelector())
+            cluster_feature_calculator = params.get('cluster_feature_calculator', CooccurrenceClusterFeature(window=window))
+            cluster_method = params.get('cluster_method', HierarchicalClustering())
+            keyphrase_selector = params.get('keyphrase_selector', KeyphraseSelector())
+
+            extractor.candidate_selection(candidate_term_selector=candidate_term_selector)
+
+            cluster_calc = params.get('cluster_calc', self.num_cluster)
+            cluster_calc_args = params.get('cluster_calc_args', {'factor': 2/3})
+            cluster_calc_args['context'] = extractor
+            num_clusters = cluster_calc(**cluster_calc_args)
+
+            extractor.candidate_weighting(cluster_feature_calculator=cluster_feature_calculator,
+                                          cluster_method=cluster_method,
+                                          keyphrase_selector=keyphrase_selector,
+                                          num_clusters=num_clusters)
+
         else:
-            false_positive += 1
+            extractor.candidate_selection()
+            extractor.candidate_weighting()
 
-    precision = true_positive / len(extracted)
-    recall = true_positive / len(references)
-    if precision == 0 or recall == 0:
-        f_score = 0
-    else:
-        f_score = ((2 * precision * recall) / (precision + recall))
+        n_keyphrases = params.get('n_keyphrases', len(extractor.candidates))
+        return extractor.get_n_best(n=n_keyphrases, redundancy_removal=redundancy_removal, stemming=(normalization == 'stemming'))
 
-    print(precision, recall, f_score)
-    return precision, recall, f_score, true_positive, false_positive
+    def calculate_model_f_score(self, model, input_dir, references, **kwargs):
+        precision_total = 0
+        recall_total = 0
+        f_score_total = 0
+        num_documents = 0
 
+        for file in glob.glob(input_dir + '/*'):
+            # make sure to initialize the evaluator clean for every run!
+            evaluator = Evaluator()
 
-def extract_keyphrases(model, file, params=None, language='en', normalization=None, n_grams=3, n_keyphrases=10, frequency_file=None, lda_model=None):
-    extractor = model()
-    extractor.load_document(file, language=language, normalization=normalization)
+            filename = os.path.splitext(os.path.basename(file))[0]
+            reference = references[filename]
 
-    df = None
-    pos = {'NOUN', 'PROPN', 'ADJ'}
-    grammar = "NP: {<ADJ>*<NOUN|PROPN>+}"
-    if frequency_file is not None:
-        df = pke.load_document_frequency_file(input_file=frequency_file, encoding="utf-8")
+            keyphrases = self.extract_keyphrases(model, file, **kwargs)
+            evaluator.evaluate(list(zip(*keyphrases))[0], reference)
+            # print(list(zip(*keyphrases))[0])
+            # print(reference)
+            print("Precision: %s, Recall: %s, F-Score: %s" % (evaluator.precision, evaluator.recall, evaluator.f_measure))
 
-    if model in [TfIdf]:
-        # extractor.candidate_selection(n=n_grams, stoplist=list(punctuation))
-        extractor.candidate_selection(n=n_grams, stoplist=extractor.stoplist)
-        extractor.candidate_weighting(df=df, encoding="utf-8")
+            precision_total += evaluator.precision
+            recall_total += evaluator.recall
+            f_score_total += evaluator.f_measure
+            num_documents += 1
 
-    elif model in [TextRank]:
-        extractor.candidate_weighting(window=2, pos=pos, top_percent=1.0) # 0.33)
-
-    elif model in [SingleRank]:
-        extractor.candidate_selection(pos=pos)
-        extractor.candidate_weighting(window=10, pos=pos)
-
-    elif model in [TopicRank, MultipartiteRank]:
-        stoplist = list(punctuation)
-        stoplist += ['-lrb-', '-rrb-', '-lcb-', '-rcb-', '-lsb-', '-rsb-']
-        stoplist += stopwords.words('english')
-        extractor.candidate_selection(pos=pos, stoplist=stoplist)
-        extractor.candidate_weighting()
-
-    elif model in [TopicalPageRank]:
-        extractor.candidate_selection(grammar=grammar)
-        extractor.candidate_weighting(window=10, pos=pos, lda_model=lda_model)
-
-    elif model in [PositionRank]:
-        extractor.candidate_selection(grammar=grammar, maximum_word_number=3)
-        extractor.candidate_weighting(window=10, pos=pos)
-
-    elif model in [YAKE]:
-        stoplist = stopwords.words('english')
-        extractor.candidate_selection(n=n_grams, stoplist=stoplist)
-        extractor.candidate_weighting(window=2, stoplist=stoplist, use_stems=(normalization == 'stemming'))
-
-    elif model in [KPMiner]:
-        extractor.candidate_selection(lasf=3, cutoff=400)
-        extractor.candidate_weighting(df=df, alpha=2.3, sigma=3.0, encoding="utf-8")
-
-    elif model in [KeyCluster]:
-        candidate_term_selector = CandidateTermSelector()           # FIXME: auslagern
-        cooccurrence_cluster_feature = CooccurrenceClusterFeature(window=2) # FIXME: auslagern
-        cluster_method = HierarchicalClustering()                   # FIXME: auslagern
-        keyphrase_selector = KeyphraseSelector()                    # FIXME: auslagern
-        num_clusters = 0
-        extractor.candidate_selection(candidate_term_selector=candidate_term_selector)
-        extractor.candidate_weighting(cluster_feature_calculator=cooccurrence_cluster_feature, cluster_method=cluster_method, keyphrase_selector=keyphrase_selector, num_clusters=num_clusters)
-    else:
-        extractor.candidate_selection()
-        extractor.candidate_weighting()
-
-    return extractor.get_n_best(n=n_keyphrases, stemming=(normalization == 'stemming'))
+        macro_precision = (precision_total / num_documents)
+        macro_recall = (recall_total / num_documents)
+        macro_f_score = (f_score_total / num_documents)
+        return macro_precision, macro_recall, macro_f_score
 
 
-def calculate_model_f_score(model, input_dir, references, language='en', frequency_file=None, lda_model=None):
-    true_positive_total = 0
-    num_extracted_keyphrases = 0
-    num_reference_keyphrases = 0
-    f_score_total = 0
-    num_documents = 0
-
-    for file in glob.glob(input_dir + '/*'):
-        filename = os.path.splitext(os.path.basename(file))[0]
-        reference = references[filename]
-
-        keyphrases = extract_keyphrases(model, file, language=language, normalization="stemming", frequency_file=frequency_file, lda_model=lda_model)
-        precision, recall, f_score, true_positive, false_positive = calculate_f_score(reference, keyphrases)
-
-        true_positive_total += true_positive
-        num_reference_keyphrases += len(reference)
-        num_extracted_keyphrases += len(keyphrases)
-        f_score_total += f_score
-        num_documents += 1
-
-    precision = true_positive_total / num_extracted_keyphrases
-    recall = true_positive_total / num_reference_keyphrases
-    if precision == 0 or recall == 0:
-        micro_f_score = 0
-    else:
-        micro_f_score = ((2 * precision * recall) / (precision + recall))
-
-    macro_f_score = (f_score_total / num_documents)
-    return precision, recall, micro_f_score, macro_f_score
-
-def semeval_testing():
-    # reference values http://aclweb.org/anthology/C16-2015
-
-    semeval_test_folder = "../ake-datasets/datasets/SemEval-2010/test"
-    semeval_combined_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
-    semeval_combined_stemmed = pke.utils.load_references(semeval_combined_stemmed_file)
-
-    # this only needs to be done once for the train documents
-    # compute_df('../ake-datasets/datasets/SemEval-2010/train', '../ake-datasets/datasets/SemEval-2010/SemEval_df_counts.tsv.gz', extension="xml")
-    # compute_lda_model('../ake-datasets/datasets/SemEval-2010/train', '../ake-datasets/datasets/SemEval-2010/lda_model.tsv.gz', extension="xml")
-
-    # models = [
-    #     TfIdf, TopicRank, SingleRank, MultipartiteRank, PositionRank, TopicalPageRank, ExpandRank,
-    #     TextRank, KPMiner, YAKE, FirstPhrases
-    # ]
-    models = [
-        # TfIdf,          # 15.2% vs 16.4%
-        # TopicRank,      # 12.6 vs 12.6%
-        # SingleRank,     # 1.9% vs 1.8%
-        KPMiner         # 19.4% vs 19.8%
-    ]
-    for m in models:
-        print("Computing the F-Score for the SemEval-2010 Dataset with {}".format(m))
-        precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, semeval_test_folder, semeval_combined_stemmed, '../ake-datasets/datasets/SemEval-2010/SemEval_df_counts.tsv.gz', '../ake-datasets/datasets/SemEval-2010/lda_model.tsv.gz')
-        print("Micro average precision: %s, recall: %s, f_score: %s" % (precision, recall, micro_f_score))  # <-- this is used in the SemEval-2010 competition https://www.aclweb.org/anthology/S10-1004
-        print("Macro average f-score: %s" % macro_f_score)
-
-
-def inspec_testing():
-    # reference values for the uncontrolled keyphrases: https://arxiv.org/pdf/1801.04470.pdf
-    # Anm.: Die Werte im Paper scheinen auf den uncontrolled keyphrases zu basieren
-
-    inspec_test_folder = "../ake-datasets/datasets/Inspec/test"
-    inspec_controlled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.contr.stem.json"
-    inspec_uncontrolled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
-    inspec_controlled_stemmed = pke.utils.load_references(inspec_controlled_stemmed_file)
-    inspec_uncontrolled_stemmed = pke.utils.load_references(inspec_uncontrolled_stemmed_file)
-
-    # compute_df('../ake-datasets/datasets/Inspec/train',
-    #            '../ake-datasets/datasets/Inspec/Inspec_df_counts.tsv.gz', extension="xml")
-    # compute_lda_model('../ake-datasets/datasets/Inspec/train',
-    #                   '../ake-datasets/datasets/Inspec/lda_model.tsv.gz', extension="xml")
-    models = [
-                            # own macro f-score vs. paper macro f-score
-        TextRank,         # 34.23%/14.88% vs 15.28% with 1.0-top/0.33-top
-        # SingleRank,       # 34.44% vs 36.51%
-        # TopicRank,        # 28.42% vs 29.02%
-        # MultipartiteRank  # 29.29% vs 30.01%
-    ]
-    for m in models:
-        print("Computing the F-Score for the Inspec Dataset with {}".format(m))
-        # precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, inspec_test_folder,
-        #                                                                           inspec_controlled_stemmed,
-        #                                                                           '../ake-datasets/datasets/Inspec/Inspec_df_counts.tsv.gz',
-        #                                                                           '../ake-datasets/datasets/Inspec/lda_model.tsv.gz')
-        precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, inspec_test_folder,
-                                                                                  inspec_uncontrolled_stemmed,
-                                                                                  '../ake-datasets/datasets/Inspec/Inspec_df_counts.tsv.gz',
-                                                                                  '../ake-datasets/datasets/Inspec/lda_model.tsv.gz')
-        print("Micro average precision: %s, recall: %s, f_score: %s" % (precision, recall, micro_f_score))  # <-- this is used in the SemEval-2010 competition https://www.aclweb.org/anthology/S10-1004
-        print("Macro average f-score: %s" % macro_f_score)  # <-- this is used in the paper mentioned above for the reference values
-
-
-def duc_testing():
-    # reference values for the uncontrolled keyphrases: https://arxiv.org/pdf/1801.04470.pdf
-
-    duc_test_folder = "../ake-datasets/datasets/DUC-2001/test"
-    duc_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
-    duc_stemmed = pke.utils.load_references(duc_stemmed_file)
-
-    models = [
-                            # own macro f-score vs. paper macro f-score
-        TextRank,         #  17.43%/12.35% vs 15.24% with 1.0-top/0.33-top
-        # SingleRank,       # 24.97% vs 27.51%
-        # TopicRank,        # 22.89% vs 24.04%
-        # MultipartiteRank  # 25.06% vs 25.28%
-    ]
-    for m in models:
-        print("Computing the F-Score for the DUC-2001 Dataset with {}".format(m))
-        precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, duc_test_folder,
-                                                                                  duc_stemmed,
-                                                                                  None, None)
-        print("Micro average precision: %s, recall: %s, f_score: %s" % (precision, recall, micro_f_score))  # <-- this is used in the SemEval-2010 competition https://www.aclweb.org/anthology/S10-1004
-        print("Macro average f-score: %s" % macro_f_score)  # <-- this is used in the paper mentioned above for the reference values
-
-
-def nus_testing():
-    # reference values for the uncontrolled keyphrases: https://arxiv.org/pdf/1801.04470.pdf
-
-    nus_test_folder = "../ake-datasets/datasets/NUS/test"
-    nus_stemmed_file = "../ake-datasets/datasets/NUS/references/test.combined.stem.json" # <-- this one is used in the paper mentioned above
-    nus_stemmed = pke.utils.load_references(nus_stemmed_file)
-
-    models = [
-                            # own macro f-score vs. paper macro f-score
-        # TextRank,         # 0.68%/1.77% vs 6.56% with 1.0-top/0.33-top
-        # SingleRank,       # 2.3% vs 5.13%
-        # TopicRank,        # 15.21% vs 13.81%
-        MultipartiteRank  # 18.01% vs 16.92%
-    ]
-    for m in models:
-        print("Computing the F-Score for the NUS Dataset with {}".format(m))
-        precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, nus_test_folder,
-                                                                                  nus_stemmed,
-                                                                                  None, None)
-        print("Micro average precision: %s, recall: %s, f_score: %s" % (precision, recall, micro_f_score))  # <-- this is used in the SemEval-2010 competition https://www.aclweb.org/anthology/S10-1004
-        print("Macro average f-score: %s" % macro_f_score)  # <-- this is used in the paper mentioned above for the reference values
-
-
+kwargs = {
+    'language': 'en',                   # load_document
+    'normalization': 'stemming',        # load_document, YAKE, get_n_best
+    'n_keyphrases': 10,                 # get_n_best
+    # 'redundancy_removal': ,           # get_n_best
+    # 'n_grams': ,                      # TfIdf, YAKE, #FIXME#
+    # 'stoplist': ,                     # TfIdf, TopicRank, MultipartiteRank, TopicalPageRank, YAKE, KPMiner, #FIXME#
+    # 'frequency_file': ,               # load_document, (TfIdf), (KPMiner)
+    # 'window': ,                       # TextRank, SingleRank, TopicalPageRank, PositionRank, YAKE, KeyCluster
+    # 'pos': ,
+    # 'top_percent': ,
+    # 'normalized': ,
+    # 'run_candidate_selection': ,
+    # 'threshold': ,
+    # 'method': ,
+    # 'heuristic': ,
+    # 'alpha': ,
+    # 'grammar': ,
+    # 'lda_model': ,
+    # 'normalized': ,
+    # 'maximum_word_number': ,
+    # 'lasf': ,
+    # 'cutoff': ,
+    # 'sigma': ,
+    # 'candidate_term_selector': ,
+    # 'cluster_feature_calculator': ,
+    # 'cluster_method': ,
+    # 'keyphrase_selector': ,
+    # 'cluster_calc': ,
+    'cluster_calc_args': {'num_clusters': 10}
+}
 def custom_testing():
     inspec_test_folder = "../ake-datasets/datasets/Inspec/test"
     inspec_controlled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.contr.stem.json"
@@ -284,35 +320,36 @@ def custom_testing():
 
     heise_folder = "../ake-datasets/datasets/Heise"
 
-    m = TopicRank # KeyCluster
-    # print("Computing the F-Score for the NUS Dataset with {}".format(m))
-    # precision, recall, micro_f_score, macro_f_score = calculate_model_f_score(m, inspec_test_folder,
-    #                                                                           inspec_uncontrolled_stemmed,
-    #                                                                           None, None)
-    # print("Micro average precision: %s, recall: %s, f_score: %s" % (precision, recall, micro_f_score))
-    # print("Macro average f-score: %s" % macro_f_score)
+    extractor = KeyphraseExtractor()
+    models = [
+        # KeyCluster,
+        # TfIdf,
+        # TopicRank,
+        SingleRank,
+        # KPMiner
+    ]
 
-    i = 0
-    for file in glob.glob(heise_folder + '/*'):
-        if i >= 0:
-            filename = os.path.splitext(os.path.basename(file))[0]
-            print(file)
-            # reference = inspec_uncontrolled_stemmed[filename]
-            keyphrases = extract_keyphrases(m, file, language='de', normalization="stemming", n_keyphrases=30)
-            print(keyphrases)
-            # print(reference)
-            print()
-        i += 1
-        if i == 2:
-            break
+    for m in models:
+        print("Computing the F-Score for the Inspec Dataset with {}".format(m))
+        macro_precision, macro_recall, macro_f_score = extractor.calculate_model_f_score(m, inspec_test_folder, inspec_uncontrolled_stemmed, **kwargs)
+        print("Macro average precision: %s, recall: %s, f-score: %s" % (macro_precision, macro_recall, macro_f_score))
+
+    # i = 0
+    # for file in glob.glob(heise_folder + '/*'):
+    #     if i >= 0:
+    #         # filename = os.path.splitext(os.path.basename(file))[0]
+    #         # reference = inspec_uncontrolled_stemmed[filename]
+    #         keyphrases = extractor.extract_keyphrases(m, file, **kwargs)
+    #         print(list(zip(*keyphrases))[0])
+    #         print()
+    #     i += 1
+    #     if i == 2:
+    #         break
+
 
 if __name__ == '__main__':
     # Overwrite a few functions and variables so that the german language can be supported
     pke.LoadFile.normalize_POS_tags = custom_normalize_POS_tags
     pke.base.ISO_to_language['de'] = 'german'
 
-    # inspec_testing()
-    # semeval_testing()
-    # duc_testing()
-    # nus_testing()
     custom_testing()
