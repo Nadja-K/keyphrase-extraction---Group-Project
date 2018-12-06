@@ -11,7 +11,7 @@ class KeyCluster(LoadFile):
     def candidate_selection(self, candidate_selector, **kwargs):
         self.candidate_terms = list(candidate_selector.select_candidates(self, **kwargs))
 
-    def candidate_weighting(self, cluster_feature_calculator, cluster_method, exemplar_terms_dist_func, keyphrase_selector, regex='j*n+', num_clusters=0):
+    def candidate_weighting(self, cluster_feature_calculator, cluster_method, exemplar_terms_dist_func, keyphrase_selector, regex='a*n+', num_clusters=0):
         # Calculating term relatedness
         self.cluster_features = cluster_feature_calculator.calc_cluster_features(self, self.candidate_terms)
 

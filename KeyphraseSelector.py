@@ -1,19 +1,28 @@
 import re
 
+_MAPPING = {
+    'NOUN': 'n',
+    'VERB': 'v',
+    'PRON': 'p',
+    'ADJ': 'a',
+    'ADV': 'ä',
+    'ADP': 'A',
+    'CONJ': 'c',
+    'DET': 'd',
+    'NUM': 'N',
+    'PRT': 'P',
+    'X': 'x',
+    '.': 's'
+}
+
 
 class KeyphraseSelector:
-    def select_candidate_keyphrases(self, sentences, regex='j*n+'):
+    def select_candidate_keyphrases(self, sentences, regex='a*n+'):
         candidate_keyphrases = dict()
         for sentence_id, sentence in enumerate(list(sentences)):
             pos_tags = ""
-            # FIXME: adjust for german POS tags
             for pos in sentence.pos:
-                if pos == 'NOUN':
-                    pos_tags = pos_tags + "n"
-                elif pos == 'ADJ':
-                    pos_tags = pos_tags + "j"
-                else:
-                    pos_tags = pos_tags + "x"
+                pos_tags = pos_tags + _MAPPING[pos]
 
             # Use the regex from the original paper (JJ)*(NN|NNS|NNP)+
             for match in re.finditer(regex, pos_tags):

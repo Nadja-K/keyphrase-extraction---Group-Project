@@ -236,7 +236,7 @@ class KeyphraseExtractor:
             exemplar_terms_dist_func = params.get('exemplar_terms_dist_func', euclid_dist)
 
             keyphrase_selector = params.get('keyphrase_selector', KeyphraseSelector())
-            regex = params.get('regex', 'j*n+')
+            regex = params.get('regex', 'a*n+')
 
             # Cluster Candidate Selection
             extractor.candidate_selection(candidate_selector=candidate_selector, **candidate_selector_args)
@@ -321,7 +321,7 @@ kwargs = {
     # 'cluster_feature_calculator': ,
     # 'cluster_method': ,
     # 'keyphrase_selector': ,
-    # 'regex': ,
+    'regex': 'a*n+',
     # 'cluster_calc': ,
     'cluster_calc_args': {'num_clusters': 10}
 }
