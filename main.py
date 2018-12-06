@@ -311,6 +311,8 @@ kwargs = {
     # 'cluster_calc': ,
     'cluster_calc_args': {'num_clusters': 10}
 }
+
+
 def custom_testing():
     inspec_test_folder = "../ake-datasets/datasets/Inspec/test"
     inspec_controlled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.contr.stem.json"
@@ -322,10 +324,10 @@ def custom_testing():
 
     extractor = KeyphraseExtractor()
     models = [
-        # KeyCluster,
+        KeyCluster,
         # TfIdf,
         # TopicRank,
-        SingleRank,
+        # SingleRank,
         # KPMiner
     ]
 

@@ -33,6 +33,7 @@ class KeyCluster(LoadFile):
         ################################################################
         # FIXME: filter out frequent single word candidate keyphrases
         ################################################################
+        # FIXME: needs to be done for german as well as english?
 
 
         # Set the final candidates
