@@ -12,7 +12,7 @@ from pke.unsupervised import (
     YAKE, FirstPhrases
 )
 from KeyCluster import KeyCluster
-from ClusterFeatureCalculator import CooccurrenceClusterFeature
+from ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature
 from CandidateSelector import CandidateSelector
 from Cluster import HierarchicalClustering
 from KeyphraseSelector import KeyphraseSelector
@@ -123,8 +123,6 @@ class KeyphraseExtractor:
             threshold = params.get('threshold', 0.74)
             method = params.get('method', 'average')
             heuristic = params.get('heuristic', None)
-            alpha = params.get('alpha', 1.1)
-
             extractor.candidate_selection(pos=pos, stoplist=stoplist)
             extractor.candidate_weighting(threshold=threshold, method=method, heuristic=heuristic)
 
@@ -163,7 +161,7 @@ class KeyphraseExtractor:
             lda_model = params.get('lda_model', None)
 
             extractor.candidate_selection(grammar=grammar)
-            extractor.candidate_weighting(window=10, pos=pos, lda_model=lda_model, stoplist=stoplist, normalized=normalized)
+            extractor.candidate_weighting(window=window, pos=pos, lda_model=lda_model, stoplist=stoplist, normalized=normalized)
 
         elif model in [PositionRank]:
             """
@@ -216,22 +214,22 @@ class KeyphraseExtractor:
         elif model in [KeyCluster]:
             """
             :param CandidateSelector candidate_selector
-            :param dict candidate_selector_args
             :param ClusterFeatureCalculator cluster_feature_calculator
             :param Cluster cluster_method
             :param func exemplar_dist_func
             :param KeyphraseSelector keyphrase_selector
             :param int window
             :param func cluster_calc
-            :param dict cluster_calc_args
+            :param float factor
             :param str regex
             """
             window = params.get('window', 2)
 
             candidate_selector = params.get('candidate_selector', CandidateSelector())
-            candidate_selector_args = params.get('candidate_selector_args', {})
 
-            cluster_feature_calculator = params.get('cluster_feature_calculator', CooccurrenceClusterFeature(window=window))
+            cluster_feature_calculator = params.get('cluster_feature_calculator', CooccurrenceClusterFeature)
+            cluster_feature_calculator = cluster_feature_calculator(window=window)
+
             cluster_method = params.get('cluster_method', HierarchicalClustering())
             exemplar_terms_dist_func = params.get('exemplar_terms_dist_func', euclid_dist)
 
@@ -239,12 +237,12 @@ class KeyphraseExtractor:
             regex = params.get('regex', 'a*n+')
 
             # Cluster Candidate Selection
-            extractor.candidate_selection(candidate_selector=candidate_selector, **candidate_selector_args)
+            extractor.candidate_selection(candidate_selector=candidate_selector, **params)
 
             # Calculate number of Clusters (if the cluster algorithm needs this)
             cluster_calc = params.get('cluster_calc', self.num_cluster)
-            cluster_calc_args = params.get('cluster_calc_args', {'factor': 2/3})
-            cluster_calc_args['context'] = extractor
+            factor = params.get('factor', 2/3)
+            cluster_calc_args = {'factor': factor, 'context': extractor}
             num_clusters = cluster_calc(**cluster_calc_args)
 
             # Candidate Clustering, Exemplar Term Selection, Keyphrase Selection
@@ -276,14 +274,15 @@ class KeyphraseExtractor:
             reference = references[filename]
 
             keyphrases = self.extract_keyphrases(model, file, **kwargs)
-            evaluator.evaluate(list(zip(*keyphrases))[0], reference)
-            # print(list(zip(*keyphrases))[0])
-            # print(reference)
-            print("Precision: %s, Recall: %s, F-Score: %s" % (evaluator.precision, evaluator.recall, evaluator.f_measure))
+            if (len(keyphrases) > 0):
+                evaluator.evaluate(list(zip(*keyphrases))[0], reference)
+                # print(list(zip(*keyphrases))[0])
+                # print(reference)
+                print("Precision: %s, Recall: %s, F-Score: %s" % (evaluator.precision, evaluator.recall, evaluator.f_measure))
 
-            precision_total += evaluator.precision
-            recall_total += evaluator.recall
-            f_score_total += evaluator.f_measure
+                precision_total += evaluator.precision
+                recall_total += evaluator.recall
+                f_score_total += evaluator.f_measure
             num_documents += 1
 
         macro_precision = (precision_total / num_documents)
@@ -297,10 +296,10 @@ kwargs = {
     'normalization': 'stemming',        # load_document, YAKE, get_n_best
     'n_keyphrases': 10,                 # get_n_best
     # 'redundancy_removal': ,           # get_n_best
-    # 'n_grams': ,                      # TfIdf, YAKE, #FIXME#
+    'n_grams': 2,                      # TfIdf, YAKE, #FIXME#
     # 'stoplist': ,                     # TfIdf, TopicRank, MultipartiteRank, TopicalPageRank, YAKE, KPMiner, #FIXME#
     # 'frequency_file': ,               # load_document, (TfIdf), (KPMiner)
-    # 'window': ,                       # TextRank, SingleRank, TopicalPageRank, PositionRank, YAKE, KeyCluster
+    'window': 10,                       # TextRank, SingleRank, TopicalPageRank, PositionRank, YAKE, KeyCluster
     # 'pos': ,
     # 'top_percent': ,
     # 'normalized': ,
@@ -311,19 +310,17 @@ kwargs = {
     # 'alpha': ,
     # 'grammar': ,
     # 'lda_model': ,
-    # 'normalized': ,
     # 'maximum_word_number': ,
     # 'lasf': ,
     # 'cutoff': ,
     # 'sigma': ,
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    'candidate_selector_args': {'n_grams': 1},
-    # 'cluster_feature_calculator': ,
+    'cluster_feature_calculator': CooccurrenceClusterFeature,
     # 'cluster_method': ,
     # 'keyphrase_selector': ,
     'regex': 'a*n+',
     # 'cluster_calc': ,
-    'cluster_calc_args': {'num_clusters': 10}
+    # 'factor':
 }
 
 
@@ -350,17 +347,15 @@ def custom_testing():
         macro_precision, macro_recall, macro_f_score = extractor.calculate_model_f_score(m, inspec_test_folder, inspec_uncontrolled_stemmed, **kwargs)
         print("Macro average precision: %s, recall: %s, f-score: %s" % (macro_precision, macro_recall, macro_f_score))
 
-    # i = 0
-    # for file in glob.glob(heise_folder + '/*'):
-    #     if i >= 0:
-    #         # filename = os.path.splitext(os.path.basename(file))[0]
-    #         # reference = inspec_uncontrolled_stemmed[filename]
-    #         keyphrases = extractor.extract_keyphrases(m, file, **kwargs)
-    #         print(list(zip(*keyphrases))[0])
-    #         print()
-    #     i += 1
-    #     if i == 2:
-    #         break
+    # for m in models:
+    #     i = 0
+    #     for file in glob.glob(heise_folder + '/*'):
+    #         if i >= 0:
+    #             keyphrases = extractor.extract_keyphrases(m, file, **kwargs)
+    #             print(keyphrases)
+    #         i += 1
+    #         if i == 2:
+    #             break
 
 
 if __name__ == '__main__':

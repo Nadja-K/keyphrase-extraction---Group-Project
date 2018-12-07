@@ -4,7 +4,10 @@ from pke.data_structures import Candidate
 from typing import Callable
 
 
-def key_cluster_candidate_selector(context, n_grams=1, stoplist=None):
+def key_cluster_candidate_selector(context, **kwargs):
+    n_grams = kwargs.get('n_grams', 1)
+    stoplist = kwargs.get('stoplist', None)
+
     # select unigrams as possible candidates
     context.candidates = defaultdict(Candidate)
     context.ngram_selection(n=n_grams)
