@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from typing import Callable
 from abc import ABCMeta, abstractmethod
+import scipy.spatial.distance as ssd
 
 
 def euclid_dist(cluster_features, mean_cluster_features):
@@ -10,6 +11,9 @@ def euclid_dist(cluster_features, mean_cluster_features):
 
 
 class Clustering(metaclass=ABCMeta):
+    def __init__(self, **kwargs):
+        pass
+
     def get_exemplar_terms(self, clusters, cluster_features, dist_func: Callable = euclid_dist):
         cluster_exemplar_terms = dict()
 
@@ -47,8 +51,13 @@ class Clustering(metaclass=ABCMeta):
 # Hierarchical Clustering (good explanation: https://joernhees.de/blog/2015/08/26/scipy-hierarchical-clustering-and-
 # dendrogram-tutorial/)
 class HierarchicalClustering(Clustering):
+    def __init__(self, **kwargs):
+        self.method = kwargs.get('method', 'ward')
+
     def calc_clusters(self, num_clusters, cluster_features):
-        linked = linkage(cluster_features, 'ward')
+        # Anm.: die cluster_feature matrix ist NICHT immer eine symmetrische matrix (die Diagonale kann Werte != 0 haben
+        # die Warnung dazu kann also ignoriert werden.
+        linked = linkage(cluster_features, self.method)
 
         # # FIXME: remove the plot stuff
         # plt.figure(figsize=(10, 7))

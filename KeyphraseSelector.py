@@ -67,3 +67,19 @@ class KeyphraseSelector:
                 del candidate_keyphrases[keyphrase]
 
         return candidate_keyphrases
+
+    def frequent_word_filtering(self, frequent_word_list, candidate_keyphrases):
+        """
+        Filter out single word keyphrases that are part of the frequent_word_list
+
+        :param frequent_word_list:
+        :return:
+        """
+        if len(frequent_word_list) == 0:
+            return candidate_keyphrases
+        else:
+            for keyphrase in list(candidate_keyphrases.keys()):
+                if keyphrase in frequent_word_list:
+                    del candidate_keyphrases[keyphrase]
+                    # print(keyphrase + " deleted")
+            return candidate_keyphrases

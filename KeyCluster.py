@@ -11,7 +11,7 @@ class KeyCluster(LoadFile):
     def candidate_selection(self, candidate_selector, **kwargs):
         self.candidate_terms = list(candidate_selector.select_candidates(self, **kwargs))
 
-    def candidate_weighting(self, cluster_feature_calculator, cluster_method, exemplar_terms_dist_func, keyphrase_selector, regex='a*n+', num_clusters=0):
+    def candidate_weighting(self, cluster_feature_calculator, cluster_method, exemplar_terms_dist_func, keyphrase_selector, regex='a*n+', num_clusters=0, frequent_word_list=[]):
         # Calculating term relatedness
         self.cluster_features = cluster_feature_calculator.calc_cluster_features(self, self.candidate_terms)
 
@@ -29,12 +29,12 @@ class KeyCluster(LoadFile):
                                                                               self.candidate_terms,
                                                                               cluster_exemplar_terms)
 
-        ################################################################
-        # FIXME: filter out frequent single word candidate keyphrases
-        ################################################################
-        # FIXME: needs to be done for german as well as english?
+
+        # filter out frequent single word candidate keyphrases
         # based on subtitles (all languages): https://github.com/hermitdave/FrequencyWords/
         # based on wikipedia (english only): https://github.com/IlyaSemenov/wikipedia-word-frequency
+        # print("frequent word list: %s" % frequent_word_list)
+        candidate_keyphrases = keyphrase_selector.frequent_word_filtering(frequent_word_list, candidate_keyphrases)
 
         # Set the final candidates
         # clean the current candidates list since it is no longer accurate

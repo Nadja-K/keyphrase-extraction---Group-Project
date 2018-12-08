@@ -5,12 +5,13 @@
 from typing import Callable, NamedTuple, Sequence, Set
 from nltk.tokenize import word_tokenize
 from nltk.stem.porter import PorterStemmer
+import numpy as np
 
 __stemmer = PorterStemmer()
 ComparisonResult = NamedTuple('ComparisonResult', [('tp', int), ('fp', int), ('tn', int), ('fn', int)])
 ValidationResult = NamedTuple('ValidationResult',
                               [('precision', float), ('recall', float), ('f_measure', float), ('error', float)])
-
+IoUResult = NamedTuple('IoUResult', [('precision', float), ('recall', float)])
 
 def error_rate(tp, tn, fp, fn) -> float:
     """
@@ -164,6 +165,10 @@ def stemmed_word_compare(original_keywords: Sequence[str], found_keywords: Seque
     return _compare(original_keywords, found_keywords, _stemmed_words)
 
 
+def stemmed_wordwise_phrase_compare(original_keywords, found_keywords) -> ComparisonResult:
+    return _wordwise_compare(original_keywords, found_keywords, _stemmed_phrases)
+
+
 def _phrases(keyphrases: Sequence[str]) -> Set[str]:
     return {k.lower().strip() for k in keyphrases}
 
@@ -188,9 +193,9 @@ def _stem(word: str) -> str:
     return __stemmer.stem(word)
 
 
-def _compare(original_keyowrds: Sequence[str], found_keywords: Sequence[str],
+def _compare(original_keywords: Sequence[str], found_keywords: Sequence[str],
              transform: Callable[[Sequence], Set] = lambda x: set(x)) -> ComparisonResult:
-    original_keywords = transform(original_keyowrds)
+    original_keywords = transform(original_keywords)
     found_keywords = transform(found_keywords)
 
     true_positives = original_keywords & found_keywords
@@ -204,6 +209,34 @@ def _compare(original_keyowrds: Sequence[str], found_keywords: Sequence[str],
     fn = len(false_negatives)
 
     return ComparisonResult(tp, fp, tn, fn)
+
+
+def _calculate_keyphrase_ios(keywords1, keywords2):
+    scores = {}
+    for t_ in keywords1:
+        phrase_scores = []
+        for t in keywords2:
+            overlap = len(set(t_.split(' ')) & set(t.split(' ')))
+            union = len(t_.split(' ')) + len(t.split(' ')) - overlap
+            iou = overlap / union
+            phrase_scores.append(iou)
+        scores[t_] = max(phrase_scores)
+
+    return scores
+
+
+def _wordwise_compare(original_keywords: Sequence[str], found_keywords: Sequence[str],
+             transform: Callable[[Sequence], Set] = lambda x: set(x)) -> IoUResult:
+    original_keywords = transform(original_keywords)
+    found_keywords = transform(found_keywords)
+
+    found_scores = _calculate_keyphrase_ios(found_keywords, original_keywords)
+    original_scores = _calculate_keyphrase_ios(original_keywords, found_keywords)
+
+    prec = np.mean(list(original_scores.values()))
+    rec = np.mean(list(found_scores.values()))
+
+    return IoUResult(prec, rec)
 
 
 class Evaluator:
@@ -262,15 +295,20 @@ class Evaluator:
         :return: precision, recall, f_measure, error_rate
         """
 
-        tp, fp, _, fn = self.compare_func(original_keywords, found_keywords)
-        if tp == 0 and fn == 0:
-            # Corner Case:
-            prec = 1.0
-            rec = 1.0
-        else:
-            prec = precision(tp, fp)
-            rec = recall(tp, fn)
-        fmeasure = 0.0
+        comp_res = self.compare_func(original_keywords, found_keywords)
+        if isinstance(comp_res, ComparisonResult):
+            tp, fp, _, fn = comp_res
+
+            if tp == 0 and fn == 0:
+                # Corner Case:
+                prec = 1.0
+                rec = 1.0
+            else:
+                prec = precision(tp, fp)
+                rec = recall(tp, fn)
+            fmeasure = 0.0
+        elif isinstance(comp_res, IoUResult):
+            prec, rec = comp_res
 
         try:
             fmeasure = f_measure(f_precision=prec, f_recall=rec, beta=1)
@@ -286,7 +324,7 @@ class Evaluator:
 
         self.extracted_keyword_count += len(found_keywords)
         self.original_keyword_count += len(original_keywords)
-        self.correct_keyword_count += tp
+        # self.correct_keyword_count += tp
 
         self._count_evaluate += 1
 
@@ -295,10 +333,10 @@ class Evaluator:
 
 def main():
     e = Evaluator()
-    e.compare_func = stemmed_compare
+    e.compare_func = stemmed_wordwise_phrase_compare #stemmed_compare
 
-    for i in range(10):
-        print(e.evaluate(["key words", "are great"], ["key word", "are great"]))
+    # for i in range(10):
+    print(e.evaluate(["test1 test2", "test1 test4"], ["test1 test2", "test3 test4", "test5"]))
 
     print(e.precision)
     print(e.recall)
