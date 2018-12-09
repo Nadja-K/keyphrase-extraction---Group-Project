@@ -363,23 +363,42 @@ class KeyphraseExtractor:
         macro_f_score = (f_score_total / num_documents)
         return macro_precision, macro_recall, macro_f_score
 
+    def window_generator(self, iterable, size):
+        for i in range(len(iterable) - size + 1):
+            yield iterable[i:i + size]
+
+    def _is_exact_match(self, substring, string):
+        substring_tokens = substring.split(' ')
+        string_tokens = string.split(' ')
+
+        for string_window in self.window_generator(string_tokens, len(substring_tokens)):
+            if substring_tokens == string_window:
+                return True
+
+        return False
+
     def _filter_reference_keyphrases(self, reference_keyphrases, model, normalization):
         filtered_reference_keyphrases = []
 
         for keyphrase in reference_keyphrases:
+            # print("k: " + keyphrase)
+            keyphrase = keyphrase.translate(str.maketrans({"(": "-lrb- ",
+                                                           ")": " -rrb-",
+                                                           "{": r"-lcb- ",
+                                                           "}": r" -rcb-"
+                                                           }))
+            # print("k: " + keyphrase)
             for s in model.sentences:
                 if normalization == 'stemming':
                     sentence = ' '.join(s.stems)
                 else:
                     sentence = ' '.join(s.words)
 
-                keyphrase = keyphrase.replace('(', '-LRB- ')
-                keyphrase = keyphrase.replace(')', ' -RRB-')
-                keyphrase = keyphrase.replace('+', '')
-                # print(keyphrase)
-                # print(sentence)
-                if re.search(r'\b' + keyphrase + r'\b', sentence) is not None:
+                # print("s: " + sentence)
+                if self._is_exact_match(keyphrase, sentence):
+                    # print("match: %s | %s" % (keyphrase, sentence))
                     filtered_reference_keyphrases.append(keyphrase)
+                    break
 
         filtered_reference_keyphrases = set(filtered_reference_keyphrases)
         # print(filtered_reference_keyphrases)
