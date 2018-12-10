@@ -15,7 +15,7 @@ class CooccurrenceClusterFeature:
         context.ngram_selection(n=1)
         context.candidate_filtering(stoplist=list(string.punctuation) +
                                           ['-lrb-', '-rrb-', '-lcb-', '-rcb-', '-lsb-', '-rsb-'],
-                                 mininum_length=1, mininum_word_size=1, only_alphanum=False)
+                                 minimum_length=1, minimum_word_size=1, only_alphanum=False)
         cooccurrence_terms = list(context.candidates.copy())
 
         # Calculate cooccurrence_matrix

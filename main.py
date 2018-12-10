@@ -124,7 +124,7 @@ class KeyphraseExtractor:
             n_grams = params.get('n_grams', 3)
 
             extractor.candidate_selection(n=n_grams, stoplist=stoplist)
-            extractor.candidate_weighting(df=df, encoding="utf-8")
+            extractor.candidate_weighting(df=df) #, encoding="utf-8")
 
         elif model in [TextRank]:
             """
@@ -347,7 +347,7 @@ class KeyphraseExtractor:
             if kwargs.get('filter_reference_keyphrases', False) is True:
                 reference = self._filter_reference_keyphrases(reference, context, kwargs.get('normalization', 'stemming'))
 
-            if (len(keyphrases) > 0):
+            if (len(keyphrases) > 0 and len(reference) > 0):
                 evaluator.evaluate(reference, list(zip(*keyphrases))[0])
                 # print(list(zip(*keyphrases))[0])
                 # print(reference)
@@ -356,6 +356,8 @@ class KeyphraseExtractor:
                 precision_total += evaluator.precision
                 recall_total += evaluator.recall
                 f_score_total += evaluator.f_measure
+            else:
+                print("Skipping file %s for not enough reference keyphrases or found keyphrases. Found keyphrases: %s, Reference keyphrases: %s" % (filename, len(keyphrases), len(reference)))
             num_documents += 1
 
         macro_precision = (precision_total / num_documents)
@@ -438,18 +440,22 @@ kwargs = {
     'factor': 2/3,
     'frequent_word_list': 'data/frequent_word_lists/en_50k.txt',
     'min_word_count': 1000,
-    # 'evaluator_compare_func': stemmed_wordwise_phrase_compare,
-    'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!
+    'evaluator_compare_func': stemmed_wordwise_phrase_compare,
+    # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!
 }
 
 
 def custom_testing():
+    # inspec_test_folder = "../ake-datasets/datasets/SemEval-2010/test"
+    # inspec_uncontrolled_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
+    
     inspec_test_folder = "../ake-datasets/datasets/Inspec/test"
-    inspec_controlled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.contr.stem.json"
-    inspec_uncontrolled_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
     inspec_uncontrolled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
-    inspec_controlled_stemmed = pke.utils.load_references(inspec_controlled_stemmed_file)
-    inspec_uncontrolled = pke.utils.load_references(inspec_uncontrolled_file)
+    
+    # inspec_controlled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.contr.stem.json"
+    # inspec_uncontrolled_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
+    # inspec_controlled_stemmed = pke.utils.load_references(inspec_controlled_stemmed_file)
+    # inspec_uncontrolled = pke.utils.load_references(inspec_uncontrolled_file)
     inspec_uncontrolled_stemmed = pke.utils.load_references(inspec_uncontrolled_stemmed_file)
 
     heise_folder = "../ake-datasets/datasets/Heise"

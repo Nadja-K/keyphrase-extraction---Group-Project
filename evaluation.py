@@ -229,7 +229,7 @@ def _wordwise_compare(original_keywords: Sequence[str], found_keywords: Sequence
              transform: Callable[[Sequence], Set] = lambda x: set(x)) -> IoUResult:
     original_keywords = transform(original_keywords)
     found_keywords = transform(found_keywords)
-
+        
     found_scores = _calculate_keyphrase_ios(found_keywords, original_keywords)
     original_scores = _calculate_keyphrase_ios(original_keywords, found_keywords)
 
