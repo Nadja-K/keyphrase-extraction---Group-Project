@@ -28,6 +28,17 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
+
+def compute_df(input_dir, output_file, extension="xml"):
+    stoplist = list(punctuation)
+    compute_document_frequency(input_dir=input_dir,
+                               output_file=output_file,
+                               extension=extension,           # input file extension
+                               language='en',                # language of files
+                               normalization="stemming",    # use porter stemmer
+                               stoplist=stoplist)
+
+
 def custom_normalize_POS_tags(self):
     """Normalizes the PoS tags from udp-penn to UD."""
 
@@ -39,7 +50,6 @@ def custom_normalize_POS_tags(self):
         # iterate throughout the sentences
         for i, sentence in enumerate(self.sentences):
             self.sentences[i].pos = [map_tag('de-tiger', 'universal', tag) for tag in sentence.pos]
-
 
 
 class KeyphraseExtractor:
@@ -112,7 +122,7 @@ class KeyphraseExtractor:
 
         df = None
         if frequency_file is not None:
-            df = pke.load_document_frequency_file(input_file=frequency_file, encoding="utf-8")
+            df = pke.load_document_frequency_file(input_file=frequency_file)
 
         if model in [TfIdf]:
             """
@@ -124,7 +134,7 @@ class KeyphraseExtractor:
             n_grams = params.get('n_grams', 3)
 
             extractor.candidate_selection(n=n_grams, stoplist=stoplist)
-            extractor.candidate_weighting(df=df) #, encoding="utf-8")
+            extractor.candidate_weighting(df=df)
 
         elif model in [TextRank]:
             """
@@ -136,7 +146,7 @@ class KeyphraseExtractor:
             """
             window = params.get('window', 2)
             pos = params.get('pos', ('NOUN', 'PROPN', 'ADJ'))
-            top_percent = params.get('top_percent', None)
+            top_percent = params.get('top_percent', 1.0)
             normalized = params.get('normalized', False)
 
             if params.get('run_candidate_selection', False):
@@ -412,16 +422,16 @@ kwargs = {
     'normalization': "stemming",
     'n_keyphrases': 30,
     # 'redundancy_removal': ,
-    'n_grams': 1,
+    # 'n_grams': 1,
     # 'stoplist': ,
-    # 'frequency_file': ,
-    'window': 2,
+    # 'frequency_file': '../ake-datasets/datasets/Inspec/Inspec_df_counts.tsv.gz',
+    # 'window': 2,
     # 'pos': ,
-    # 'top_percent': ,
+    'top_percent': 1.0,
     # 'normalized': ,
     # 'run_candidate_selection': ,
     # 'threshold': ,
-    'method': 'centroid',
+    # 'method': 'centroid', # COMMENT OUT FOR TopicRank!
     # 'heuristic': ,
     # 'alpha': ,
     # 'grammar': ,
@@ -431,13 +441,13 @@ kwargs = {
     # 'cutoff': ,
     # 'sigma': ,
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    'cluster_feature_calculator': CooccurrenceClusterFeature,
+    # 'cluster_feature_calculator': CooccurrenceClusterFeature,
     # 'cluster_method': ,
     # 'keyphrase_selector': ,
-    'regex': 'a*n+',
+    # 'regex': 'a*n+',
     # 'num_clusters': ,
     # 'cluster_calc': ,
-    'factor': 2/3,
+    # 'factor': 2/3,
     'frequent_word_list': 'data/frequent_word_lists/en_50k.txt',
     'min_word_count': 1000,
     'evaluator_compare_func': stemmed_wordwise_phrase_compare,
@@ -446,32 +456,47 @@ kwargs = {
 
 
 def custom_testing():
-    # inspec_test_folder = "../ake-datasets/datasets/SemEval-2010/test"
-    # inspec_uncontrolled_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
-    
-    inspec_test_folder = "../ake-datasets/datasets/Inspec/test"
-    inspec_uncontrolled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
-    
-    # inspec_controlled_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.contr.stem.json"
-    # inspec_uncontrolled_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
-    # inspec_controlled_stemmed = pke.utils.load_references(inspec_controlled_stemmed_file)
-    # inspec_uncontrolled = pke.utils.load_references(inspec_uncontrolled_file)
-    inspec_uncontrolled_stemmed = pke.utils.load_references(inspec_uncontrolled_stemmed_file)
+    # SemEval-2010
+    # train_folder = "../ake-datasets/datasets/SemEval-2010/train"
+    # test_folder = "../ake-datasets/datasets/SemEval-2010/test"
+    # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
 
-    heise_folder = "../ake-datasets/datasets/Heise"
+    # Inspec
+    # train_folder = "../ake-datasets/datasets/Inspec/train"
+    # test_folder = "../ake-datasets/datasets/Inspec/test"
+    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
 
+    # Heise
+    ## train_folder = "../ake-datasets/datasets/Inspec/train"
+    # test_folder = "../parsed"
+    # reference_stemmed_file = ""
+
+    # DUC-2001
+    train_folder = "../ake-datasets/datasets/DUC-2001/train"
+    test_folder = "../ake-datasets/datasets/DUC-2001/test"
+    reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
+
+    reference_stemmed = pke.utils.load_references(reference_stemmed_file)
     extractor = KeyphraseExtractor()
     models = [
-        KeyCluster,
+        # KeyCluster,
         # TfIdf,
         # TopicRank,
         # SingleRank,
+        TextRank,
         # KPMiner
     ]
 
     for m in models:
+        if m == TfIdf:
+            frequency_file = kwargs.get('frequency_file', None)
+            if frequency_file is None:
+                output_name = '/'.join(train_folder.split('/')[:-1]) + '/df_counts.tsv.gz'
+                compute_df(train_folder, output_name, extension="xml")
+                kwargs['frequency_file'] = output_name
+
         print("Computing the F-Score for the Inspec Dataset with {}".format(m))
-        macro_precision, macro_recall, macro_f_score = extractor.calculate_model_f_score(m, inspec_test_folder, inspec_uncontrolled_stemmed, **kwargs)
+        macro_precision, macro_recall, macro_f_score = extractor.calculate_model_f_score(m, test_folder, reference_stemmed, **kwargs)
         print("Macro average precision: %s, recall: %s, f-score: %s" % (macro_precision, macro_recall, macro_f_score))
 
     # for m in models:
