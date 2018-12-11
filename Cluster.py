@@ -60,6 +60,8 @@ class HierarchicalClustering(Clustering):
     def calc_clusters(self, num_clusters, cluster_features, labels):
         # Anm.: die cluster_feature matrix ist NICHT immer eine symmetrische matrix (die Diagonale kann Werte != 0 haben
         # die Warnung dazu kann also ignoriert werden.
+
+        # FIXME
         cluster_features = 1. / (cluster_features + 0.001)
         print(cluster_features)
         print(labels)
