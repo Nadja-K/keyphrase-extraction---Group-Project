@@ -18,7 +18,7 @@ class KeyCluster(LoadFile):
         # Term clustering
         if num_clusters == 0:
             num_clusters = int(2./3. * len(self.candidate_terms))
-        clusters = cluster_method.calc_clusters(num_clusters, self.cluster_features)
+        clusters = cluster_method.calc_clusters(num_clusters, self.cluster_features, self.candidate_terms)
         cluster_exemplar_terms = cluster_method.get_exemplar_terms(clusters, self.cluster_features, exemplar_terms_dist_func)
 
         # Create candidate keyphrases

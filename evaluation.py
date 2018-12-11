@@ -211,7 +211,7 @@ def _compare(original_keywords: Sequence[str], found_keywords: Sequence[str],
     return ComparisonResult(tp, fp, tn, fn)
 
 
-def _calculate_keyphrase_ios(keywords1, keywords2):
+def _calculate_keyphrase_iou(keywords1, keywords2):
     scores = {}
     for t_ in keywords1:
         phrase_scores = []
@@ -230,11 +230,11 @@ def _wordwise_compare(original_keywords: Sequence[str], found_keywords: Sequence
     original_keywords = transform(original_keywords)
     found_keywords = transform(found_keywords)
         
-    found_scores = _calculate_keyphrase_ios(found_keywords, original_keywords)
-    original_scores = _calculate_keyphrase_ios(original_keywords, found_keywords)
+    found_scores = _calculate_keyphrase_iou(found_keywords, original_keywords)
+    original_scores = _calculate_keyphrase_iou(original_keywords, found_keywords)
 
-    prec = np.mean(list(original_scores.values()))
-    rec = np.mean(list(found_scores.values()))
+    rec = np.mean(list(original_scores.values()))
+    prec = np.mean(list(found_scores.values()))
 
     return IoUResult(prec, rec)
 

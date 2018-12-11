@@ -16,9 +16,9 @@ from pke.unsupervised import (
 from KeyCluster import KeyCluster
 from ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature
 from CandidateSelector import CandidateSelector
-from Cluster import HierarchicalClustering
+from Cluster import HierarchicalClustering, SpectralClustering
 from KeyphraseSelector import KeyphraseSelector
-from evaluation import Evaluator, stemmed_wordwise_phrase_compare, stemmed_compare
+from evaluation import Evaluator, stemmed_wordwise_phrase_compare, stemmed_compare, stemmed_word_compare
 from Cluster import euclid_dist
 from nltk.tag.mapping import map_tag
 from nltk.stem.snowball import SnowballStemmer
@@ -425,13 +425,13 @@ kwargs = {
     # 'n_grams': 1,
     # 'stoplist': ,
     # 'frequency_file': '../ake-datasets/datasets/Inspec/Inspec_df_counts.tsv.gz',
-    # 'window': 2,
+    'window': 2,
     # 'pos': ,
-    'top_percent': 1.0,
+    # 'top_percent': 1.0,
     # 'normalized': ,
     # 'run_candidate_selection': ,
     # 'threshold': ,
-    # 'method': 'centroid', # COMMENT OUT FOR TopicRank!
+    'method': 'centroid', # COMMENT OUT FOR TopicRank!
     # 'heuristic': ,
     # 'alpha': ,
     # 'grammar': ,
@@ -442,7 +442,7 @@ kwargs = {
     # 'sigma': ,
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
     # 'cluster_feature_calculator': CooccurrenceClusterFeature,
-    # 'cluster_method': ,
+    # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
     # 'regex': 'a*n+',
     # 'num_clusters': ,
@@ -450,7 +450,7 @@ kwargs = {
     # 'factor': 2/3,
     'frequent_word_list': 'data/frequent_word_lists/en_50k.txt',
     'min_word_count': 1000,
-    'evaluator_compare_func': stemmed_wordwise_phrase_compare,
+    'evaluator_compare_func': stemmed_word_compare, #stemmed_wordwise_phrase_compare,
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!
 }
 
@@ -462,9 +462,10 @@ def custom_testing():
     # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
 
     # Inspec
-    # train_folder = "../ake-datasets/datasets/Inspec/train"
-    # test_folder = "../ake-datasets/datasets/Inspec/test"
-    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
+    train_folder = "../ake-datasets/datasets/Inspec/train"
+    # test_folder = "../ake-datasets/datasets/Inspec/dev"
+    test_folder = "../ake-datasets/datasets/Inspec_testing/dev"
+    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
 
     # Heise
     ## train_folder = "../ake-datasets/datasets/Inspec/train"
@@ -472,18 +473,18 @@ def custom_testing():
     # reference_stemmed_file = ""
 
     # DUC-2001
-    train_folder = "../ake-datasets/datasets/DUC-2001/train"
-    test_folder = "../ake-datasets/datasets/DUC-2001/test"
-    reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
+    # train_folder = "../ake-datasets/datasets/DUC-2001/train"
+    # test_folder = "../ake-datasets/datasets/DUC-2001/test"
+    # reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
 
     reference_stemmed = pke.utils.load_references(reference_stemmed_file)
     extractor = KeyphraseExtractor()
     models = [
-        # KeyCluster,
+        KeyCluster,
         # TfIdf,
         # TopicRank,
         # SingleRank,
-        TextRank,
+        # TextRank,
         # KPMiner
     ]
 
