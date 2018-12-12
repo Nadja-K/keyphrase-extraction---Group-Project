@@ -17,7 +17,7 @@ class CooccurrenceClusterFeature:
                                           ['-lrb-', '-rrb-', '-lcb-', '-rcb-', '-lsb-', '-rsb-'],
                                  minimum_length=1, minimum_word_size=1, only_alphanum=False)
         cooccurrence_terms = list(context.candidates.copy())
-
+        
         # Calculate cooccurrence_matrix
         cooccurrence_matrix = np.zeros((len(filtered_candidate_terms), len(filtered_candidate_terms)))
         for sentence in list(context.sentences):

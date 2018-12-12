@@ -1,4 +1,5 @@
 import colorsys
+import os
 
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 from matplotlib import pyplot as plt
@@ -17,7 +18,7 @@ class Clustering(metaclass=ABCMeta):
     def __init__(self, **kwargs):
         pass
 
-    def get_exemplar_terms(self, clusters, cluster_features, dist_func: Callable = euclid_dist):
+    def get_exemplar_terms(self, clusters, cluster_features, terms, dist_func: Callable = euclid_dist):
         cluster_exemplar_terms = dict()
 
         # Derive the centroids of each cluster based on the euclidean distance
@@ -47,8 +48,18 @@ class Clustering(metaclass=ABCMeta):
                 cluster_exemplar_terms[cluster]['centroid'] = cluster_features[index]
                 cluster_exemplar_terms[cluster]['centroid_dist'] = dist
                 cluster_exemplar_terms[cluster]['centroid_index'] = index
+                cluster_exemplar_terms[cluster]['term'] = terms[index]
 
         return cluster_exemplar_terms
+
+
+def get_N_HexCol(N=5):
+    HSV_tuples = [(x * 1.0 / N*2, 1.0, 1.0) for x in range(N)]
+    hex_out = []
+    for rgb in HSV_tuples:
+        rgb = map(lambda x: int(x * 255), colorsys.hsv_to_rgb(*rgb))
+        hex_out.append('#%02x%02x%02x' % tuple(rgb))
+    return hex_out
 
 
 # Hierarchical Clustering (good explanation: https://joernhees.de/blog/2015/08/26/scipy-hierarchical-clustering-and-
@@ -56,70 +67,65 @@ class Clustering(metaclass=ABCMeta):
 class HierarchicalClustering(Clustering):
     def __init__(self, **kwargs):
         self.method = kwargs.get('method', 'ward')
+        self.transformToDistanceMatrix = kwargs.get('transformToDistanceMatrix', True)
 
-    def calc_clusters(self, num_clusters, cluster_features, labels):
-        # Anm.: die cluster_feature matrix ist NICHT immer eine symmetrische matrix (die Diagonale kann Werte != 0 haben
-        # die Warnung dazu kann also ignoriert werden.
-
-        # FIXME
-        cluster_features = 1. / (cluster_features + 0.001)
-        print(cluster_features)
-        print(labels)
-        linked = linkage(cluster_features, self.method)
-        clusters = fcluster(linked, num_clusters, criterion='maxclust')
-
-        def get_N_HexCol(N=5):
-            HSV_tuples = [(x * 1.0 / N*2, 1.0, 1.0) for x in range(N)]
-            hex_out = []
-            for rgb in HSV_tuples:
-                rgb = map(lambda x: int(x * 255), colorsys.hsv_to_rgb(*rgb))
-                hex_out.append('#%02x%02x%02x' % tuple(rgb))
-            return hex_out
-
+    def _create_dendogram(self, linked, labels, clusters, filename):
+        # Create hex colors for every cluster
         cluster_colors = get_N_HexCol(len(set(clusters)))
-        ################
         dflt_col = "#404040"  # Unclustered gray
+
+        # Create a dictionary for all leaves (words) and their corresponding cluster color
         D_leaf_colors = dict()
         for index, cluster in enumerate(clusters):
             label = labels[index]
-            D_leaf_colors[label] = cluster_colors[cluster-1]
-        print(D_leaf_colors)
+            D_leaf_colors[label] = cluster_colors[cluster - 1]
+
+        # Create a dict to color the links between the samples of each cluster
         link_cols = {}
         for i, i12 in enumerate(linked[:, :2].astype(int)):
             c1, c2 = (link_cols[x] if x > len(linked) else D_leaf_colors[labels[x]] for x in i12)
             link_cols[i + 1 + len(linked)] = c1 if c1 == c2 else dflt_col
-        ###########
+            for x in i12:
+                if c1 != c2 and x < len(linked):
+                    D_leaf_colors[labels[x]] = dflt_col
 
+        # Create the actual dendogram with the calculated colors
         fig, axes = plt.subplots(1, 1, figsize=(20, 10))
         dendrogram(linked,
                    labels=labels,
-                   # truncate_mode='lastp',
-                   # p=30,
                    orientation='top',
                    leaf_font_size=12,
-                   #distance_sort='descending',
-                   #show_contracted=True,
-                   #show_leaf_counts=True),
+                   # distance_sort='descending',
                    ax=axes,
-                   link_color_func=lambda k: link_cols[k]
+                   link_color_func=lambda k: link_cols[k],
+                   leaf_rotation=60.0
                    )
 
-       # for tick in axes.xaxis.get_major_ticks():
-       #     label = tick.label._text
-       #     index = labels.index(label)
-       #     cluster = clusters[index]
-       #     tick.label.set_color(colors[cluster-1])  # set the color
-        plt.savefig('cluster_graphs/' + str(time.time()) + ".png")
-        print(num_clusters)
-        print(cluster_features.shape)
-        print(len(labels))
-        print(labels, clusters)
-        input("h")
+        for tick in axes.xaxis.get_major_ticks():
+            tick.label.set_color(D_leaf_colors[tick.label._text])
+
+        plt.savefig('cluster_graphs/' + os.path.basename(filename).split('.')[0] + ".png")
+        plt.close()
+
+    def calc_clusters(self, num_clusters, cluster_features, labels, filename=str(time.time())):
+        # Anm.: die cluster_feature matrix ist NICHT immer eine symmetrische matrix (die Diagonale kann Werte != 0 haben
+        # die Warnung dazu kann also ignoriert werden.
+
+        # Adjust the co-occurrence matrix so that you get a distance matrix!
+        if self.transformToDistanceMatrix is True:
+            cluster_features = 1. / (cluster_features + 0.1)
+
+        linked = linkage(cluster_features, self.method)
+        clusters = fcluster(linked, num_clusters, criterion='maxclust')
+
+        print("Creating dendogram for %s" % os.path.basename(filename))
+        self._create_dendogram(linked, labels, clusters, filename)
+
         return clusters
 
 
 class SpectralClustering(Clustering):
-    def calc_clusters(self, num_clusters, cluster_features, labels):
+    def calc_clusters(self, num_clusters, cluster_features, labels, filename=str(time.time())):
         clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters).fit(cluster_features)
         return clusters.labels_
 

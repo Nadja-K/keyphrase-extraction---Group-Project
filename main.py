@@ -279,6 +279,7 @@ class KeyphraseExtractor:
             :param float factor
             :param str regex
             :param str method
+            :param bool transformToDistanceMatrix
             """
             window = params.get('window', 2)
 
@@ -326,6 +327,7 @@ class KeyphraseExtractor:
                                           exemplar_terms_dist_func=exemplar_terms_dist_func,
                                           keyphrase_selector=keyphrase_selector,
                                           num_clusters=num_clusters,
+                                          filename=file,
                                           regex=regex,
                                           frequent_word_list=frequent_word_list)
 
@@ -393,27 +395,21 @@ class KeyphraseExtractor:
         filtered_reference_keyphrases = []
 
         for keyphrase in reference_keyphrases:
-            # print("k: " + keyphrase)
             keyphrase = keyphrase.translate(str.maketrans({"(": "-lrb- ",
                                                            ")": " -rrb-",
                                                            "{": r"-lcb- ",
                                                            "}": r" -rcb-"
                                                            }))
-            # print("k: " + keyphrase)
             for s in model.sentences:
                 if normalization == 'stemming':
                     sentence = ' '.join(s.stems)
                 else:
                     sentence = ' '.join(s.words)
 
-                # print("s: " + sentence)
                 if self._is_exact_match(keyphrase, sentence):
-                    # print("match: %s | %s" % (keyphrase, sentence))
                     filtered_reference_keyphrases.append(keyphrase)
                     break
-
         filtered_reference_keyphrases = set(filtered_reference_keyphrases)
-        # print(filtered_reference_keyphrases)
         return filtered_reference_keyphrases
 
 
@@ -431,7 +427,7 @@ kwargs = {
     # 'normalized': ,
     # 'run_candidate_selection': ,
     # 'threshold': ,
-    'method': 'centroid', # COMMENT OUT FOR TopicRank!
+    # 'method': 'centroid', # COMMENT OUT FOR TopicRank!
     # 'heuristic': ,
     # 'alpha': ,
     # 'grammar': ,
@@ -442,6 +438,7 @@ kwargs = {
     # 'sigma': ,
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
     # 'cluster_feature_calculator': CooccurrenceClusterFeature,
+    # 'transformToDistanceMatrix': False,
     # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
     # 'regex': 'a*n+',
@@ -450,7 +447,7 @@ kwargs = {
     # 'factor': 2/3,
     'frequent_word_list': 'data/frequent_word_lists/en_50k.txt',
     'min_word_count': 1000,
-    'evaluator_compare_func': stemmed_word_compare, #stemmed_wordwise_phrase_compare,
+    # 'evaluator_compare_func': stemmed_word_compare, #stemmed_wordwise_phrase_compare,
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!
 }
 
@@ -463,8 +460,7 @@ def custom_testing():
 
     # Inspec
     train_folder = "../ake-datasets/datasets/Inspec/train"
-    # test_folder = "../ake-datasets/datasets/Inspec/dev"
-    test_folder = "../ake-datasets/datasets/Inspec_testing/dev"
+    test_folder = "../ake-datasets/datasets/Inspec/dev"
     reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
 
     # Heise
@@ -499,6 +495,11 @@ def custom_testing():
         print("Computing the F-Score for the Inspec Dataset with {}".format(m))
         macro_precision, macro_recall, macro_f_score = extractor.calculate_model_f_score(m, test_folder, reference_stemmed, **kwargs)
         print("Macro average precision: %s, recall: %s, f-score: %s" % (macro_precision, macro_recall, macro_f_score))
+
+    # For testing with a single raw text file.
+    # for m in models:
+    #     keyphrases = extractor.extract_keyphrases(m, 'test_input.txt', **kwargs)
+    #     print(keyphrases)
 
     # for m in models:
     #     i = 0

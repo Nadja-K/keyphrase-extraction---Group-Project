@@ -11,8 +11,11 @@ _MAPPING = {
     'DET': 'd',
     'NUM': 'N',
     'PRT': 'P',
+    'PROPN': 'q',
     'X': 'x',
-    '.': 's'
+    '.': 's',
+    'PUNCT': 's',
+    'SPACE': ''
 }
 
 
@@ -21,6 +24,7 @@ class KeyphraseSelector:
         candidate_keyphrases = dict()
         for sentence_id, sentence in enumerate(list(sentences)):
             pos_tags = ""
+            # Create a simpler string representing the PoS Tags for the regex
             for pos in sentence.pos:
                 pos_tags = pos_tags + _MAPPING[pos]
 
@@ -59,7 +63,9 @@ class KeyphraseSelector:
     def filter_candidate_keyphrases(self, candidate_keyphrases, candidate_terms, cluster_exemplar_terms):
         for keyphrase in list(candidate_keyphrases.keys()):
             for key, val in cluster_exemplar_terms.items():
-                if candidate_terms[val['centroid_index']] in keyphrase:
+                candidate_term = candidate_terms[val['centroid_index']]
+
+                if candidate_term in keyphrase.split(' '):
                     candidate_keyphrases[keyphrase]['exemplar_terms_count'] += 1
                     candidate_keyphrases[keyphrase]['weight'] = 1
 
