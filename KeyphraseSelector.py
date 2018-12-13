@@ -58,9 +58,13 @@ class KeyphraseSelector:
                         'exemplar_terms_count': 0,
                         'weight': 0
                     }
+                    # print(candidate_keyphrases[keyphrase]['unstemmed'])
+                    # print(candidate_keyphrases[keyphrase]['pos'])
         return candidate_keyphrases
 
     def filter_candidate_keyphrases(self, candidate_keyphrases, candidate_terms, cluster_exemplar_terms):
+        candidate_terms = list(candidate_terms)
+
         for keyphrase in list(candidate_keyphrases.keys()):
             for key, val in cluster_exemplar_terms.items():
                 candidate_term = candidate_terms[val['centroid_index']]

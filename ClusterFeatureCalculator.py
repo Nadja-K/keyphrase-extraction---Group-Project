@@ -2,14 +2,16 @@ import string
 import numpy as np
 from collections import defaultdict
 
+import spacy
 from pke.data_structures import Candidate
-
+from sklearn.metrics.pairwise import cosine_similarity
 
 class CooccurrenceClusterFeature:
-    def __init__(self, window=2):
-        self.window = window
+    def __init__(self, **kwargs):
+        self.window = kwargs.get('window', 2)
 
     def calc_cluster_features(self, context, filtered_candidate_terms):
+        filtered_candidate_terms = list(filtered_candidate_terms)
         # Get cooccurrence terms including stopwords but filter out punctuation and linebreaks
         context.candidates = defaultdict(Candidate)
         context.ngram_selection(n=1)
@@ -50,8 +52,8 @@ class CooccurrenceClusterFeature:
 
 
 class PPMIClusterFeature(CooccurrenceClusterFeature):
-    def __init__(self, window=2):
-        super().__init__(window=window)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def calc_cluster_features(self, context, filtered_candidate_terms):
         cooccurrence_matrix = super().calc_cluster_features(context, filtered_candidate_terms)
@@ -71,3 +73,38 @@ class PPMIClusterFeature(CooccurrenceClusterFeature):
         # print(ppmi_matrix)
 
         return ppmi_matrix
+
+
+class WordEmbeddingsClusterFeature:
+    def __init__(self, **kwargs):
+        self.nlp = kwargs.get('word_embedding_model', None)
+        if self.nlp is None:
+            print("Loading word embedding model in ClusterFeatureCalculator")
+            self.nlp = spacy.load('en_vectors_web_lg')
+
+    def calc_cluster_features(self, context, filtered_candidate_terms):
+        word_embedding_matrix = np.zeros((len(filtered_candidate_terms), len(filtered_candidate_terms)))
+
+        word_embeddings = dict()
+        for key, candidate in filtered_candidate_terms.items():
+            # make a set of all surface forms in lower case
+            surface_forms = set([item.lower() for sublist in candidate.surface_forms for item in sublist])
+
+            # save all surface forms that have a word embedding vector
+            surface_forms_in_model = ""
+            for surface_form in surface_forms:
+                token = self.nlp(surface_form)
+                if token.has_vector is True:
+                    surface_forms_in_model += token.text + " "
+
+            # Remove the possible excess space and get the (mean) embedding vector
+            word_embeddings[candidate] = self.nlp(surface_forms_in_model[:-1]).vector.reshape(1, -1)
+
+        # Calculate the cosine similarity matrix
+        for index1, candidate1 in enumerate(word_embeddings):
+            for index2, candidate2 in enumerate(word_embeddings):
+                if index2 < index1:
+                    continue
+                word_embedding_matrix[index1][index2] = cosine_similarity(word_embeddings[candidate1], word_embeddings[candidate2])[0][0]
+                word_embedding_matrix[index2][index1] = word_embedding_matrix[index1][index2]
+        return word_embedding_matrix

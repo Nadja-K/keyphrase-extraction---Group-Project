@@ -9,7 +9,7 @@ class KeyCluster(LoadFile):
         self.cluster_features = None
 
     def candidate_selection(self, candidate_selector, **kwargs):
-        self.candidate_terms = list(candidate_selector.select_candidates(self, **kwargs))
+        self.candidate_terms = candidate_selector.select_candidates(self, **kwargs)
 
     def candidate_weighting(self, cluster_feature_calculator, cluster_method, exemplar_terms_dist_func, keyphrase_selector, filename, regex='a*n+', num_clusters=0, frequent_word_list=[]):
         # Calculating term relatedness
@@ -17,17 +17,17 @@ class KeyCluster(LoadFile):
 
         # Term clustering
         if num_clusters == 0:
-            num_clusters = int(2./3. * len(self.candidate_terms))
+            num_clusters = int(2./3. * len(list(self.candidate_terms)))
         clusters = cluster_method.calc_clusters(num_clusters, self.cluster_features, self.candidate_terms, filename=filename)
         cluster_exemplar_terms = cluster_method.get_exemplar_terms(clusters, self.cluster_features, self.candidate_terms, exemplar_terms_dist_func)
 
         # Create candidate keyphrases
         candidate_keyphrases = keyphrase_selector.select_candidate_keyphrases(self.sentences, regex=regex)
+
         # Select keyphrases that contain 1+ exemplar terms
         candidate_keyphrases = keyphrase_selector.filter_candidate_keyphrases(candidate_keyphrases,
                                                                               self.candidate_terms,
                                                                               cluster_exemplar_terms)
-
         # filter out frequent single word candidate keyphrases
         # based on subtitles (all languages): https://github.com/hermitdave/FrequencyWords/
         # based on wikipedia (english only): https://github.com/IlyaSemenov/wikipedia-word-frequency
@@ -39,3 +39,5 @@ class KeyCluster(LoadFile):
         for candidate_keyphrase, vals in candidate_keyphrases.items():
             self.add_candidate(vals['unstemmed'], vals['stemmed'], vals['pos'], vals['char_offsets'], vals['sentence_id'])
             self.weights[candidate_keyphrase] = vals['weight']
+
+        return num_clusters

@@ -1,6 +1,5 @@
-import re
-
 import pke
+import spacy
 from nltk.corpus import stopwords
 from pke import compute_document_frequency, compute_lda_model
 from string import punctuation
@@ -14,103 +13,16 @@ from pke.unsupervised import (
     YAKE, FirstPhrases
 )
 from KeyCluster import KeyCluster
-from ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature
+from ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature, WordEmbeddingsClusterFeature
 from CandidateSelector import CandidateSelector
 from Cluster import HierarchicalClustering, SpectralClustering
 from KeyphraseSelector import KeyphraseSelector
 from evaluation import Evaluator, stemmed_wordwise_phrase_compare, stemmed_compare, stemmed_word_compare
 from Cluster import euclid_dist
-from nltk.tag.mapping import map_tag
-from nltk.stem.snowball import SnowballStemmer
-import logging
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-
-
-def compute_df(input_dir, output_file, extension="xml"):
-    stoplist = list(punctuation)
-    compute_document_frequency(input_dir=input_dir,
-                               output_file=output_file,
-                               extension=extension,           # input file extension
-                               language='en',                # language of files
-                               normalization="stemming",    # use porter stemmer
-                               stoplist=stoplist)
-
-
-def custom_normalize_POS_tags(self):
-    """Normalizes the PoS tags from udp-penn to UD."""
-
-    if self.language == 'en':
-        # iterate throughout the sentences
-        for i, sentence in enumerate(self.sentences):
-            self.sentences[i].pos = [map_tag('en-ptb', 'universal', tag) for tag in sentence.pos]
-    elif self.language == 'de':
-        # iterate throughout the sentences
-        for i, sentence in enumerate(self.sentences):
-            self.sentences[i].pos = [map_tag('de-tiger', 'universal', tag) for tag in sentence.pos]
+from helper import compute_df, calc_num_cluster, custom_normalize_POS_tags, _load_word_embedding_model, _load_frequent_word_list
 
 
 class KeyphraseExtractor:
-    def parse_frequent_word_list(self, path, min_word_count=10000, language='en', stemming=False):
-        if language == 'en':
-            stemmer = SnowballStemmer("porter")
-        else:
-            stemmer = SnowballStemmer(pke.base.ISO_to_language[language], ignore_stopwords=False)
-
-        if path == '':
-            return []
-
-        with open(path, encoding="utf-8") as f:
-            content = f.readlines()
-            content = dict(x.strip().split(' ') for x in content)
-
-            if stemming is True:
-                frequent_word_dict = dict()
-                for word, count in sorted(content.items(), key=lambda x: int(x[1]), reverse=True):
-                    count = int(count)
-                    if count < min_word_count:
-                        break
-
-                    word = stemmer.stem(word)
-                    if word not in frequent_word_dict.keys():
-                        frequent_word_dict[word] = count
-            else:
-                frequent_word_dict = {k: v for k, v in content.items() if int(v) >= min_word_count}
-
-            # x = np.arange(len(frequent_word_dict))[:500]
-            # y = list(frequent_word_dict.values())[:500]
-            # print(list(frequent_word_dict.keys())[11])
-            # plt.rcParams["figure.figsize"] = (64, 4)
-            # plt.rcParams["xtick.labelsize"] = 7
-            # sns_plot = sns.barplot(x=x, y=y)
-            # for item in sns_plot.get_xticklabels():
-            #     item.set_rotation(45)
-            # plt.show()
-        return list(frequent_word_dict.keys())
-
-    def num_cluster(self, **params):
-        """
-        Default method to calculate the number of clusters for cluster-based methods.
-
-        :param int num_clusters
-        :param float factor
-        :param LoadFile context
-
-        :return: int
-        """
-        num_clusters = params.get('num_clusters', 0)
-        if num_clusters > 0:
-            return num_clusters
-
-        factor = params.get('factor', 1)
-        context = params.get('context', None)
-        if context is None:
-            return 10
-
-        return int(factor * len(context.candidate_terms))
-
     def extract_keyphrases(self, model, file, **params):
         language = params.get('language', 'en')
         normalization = params.get('normalization', 'stemming')
@@ -120,6 +32,7 @@ class KeyphraseExtractor:
         extractor = model()
         extractor.load_document(file, language=language, normalization=normalization)
 
+        num_clusters = None
         df = None
         if frequency_file is not None:
             df = pke.load_document_frequency_file(input_file=frequency_file)
@@ -280,14 +193,13 @@ class KeyphraseExtractor:
             :param str regex
             :param str method
             :param bool transformToDistanceMatrix
+            :param spacy instanz word_embedding_model 
+            :param list frequent_word_list
             """
-            window = params.get('window', 2)
-
             candidate_selector = params.get('candidate_selector', CandidateSelector())
 
             cluster_feature_calculator = params.get('cluster_feature_calculator', CooccurrenceClusterFeature)
-            cluster_feature_calculator = cluster_feature_calculator(window=window)
-
+            cluster_feature_calculator = cluster_feature_calculator(**params)
             cluster_method = params.get('cluster_method', HierarchicalClustering)
             cluster_method = cluster_method(**params)
 
@@ -296,23 +208,16 @@ class KeyphraseExtractor:
             keyphrase_selector = params.get('keyphrase_selector', KeyphraseSelector())
             regex = params.get('regex', 'a*n+')
 
-            frequent_word_list_path = params.get('frequent_word_list', '')
-            if frequent_word_list_path.split('/')[-1].startswith('en_') and language == 'de':
-                logging.warning("The language is set to german while possibly using a english frequent word list. Make "
-                                "sure you have set frequent_word_list and language to the correct values.")
-            elif frequent_word_list_path.split('/')[-1].startswith('de_') and language == 'en':
-                logging.warning("The language is set to english while possibly using a german frequent word list. Make "
-                                "sure you have set frequent_word_list and language to the correct values.")
-
-            min_word_count = params.get('min_word_count', 10000)
-            frequent_word_list = self.parse_frequent_word_list(frequent_word_list_path, min_word_count=min_word_count, language=language, stemming=(normalization == 'stemming'))
+            frequent_word_list = params.get('frequent_word_list', [])
+            if len(frequent_word_list) == 0:
+                print("Frequent word list is empty. No frequent word filtering will be performed.")
 
             # Cluster Candidate Selection
             extractor.candidate_selection(candidate_selector=candidate_selector, **params)
 
             # Calculate number of Clusters (if the cluster algorithm needs this)
             num_clusters = params.get('num_clusters', 0)
-            cluster_calc = params.get('cluster_calc', self.num_cluster)
+            cluster_calc = params.get('cluster_calc', calc_num_cluster)
             factor = params.get('factor', 2/3)
             cluster_calc_args = {
                 'factor': factor,
@@ -322,7 +227,7 @@ class KeyphraseExtractor:
             num_clusters = cluster_calc(**cluster_calc_args)
 
             # Candidate Clustering, Exemplar Term Selection, Keyphrase Selection
-            extractor.candidate_weighting(cluster_feature_calculator=cluster_feature_calculator,
+            num_clusters = extractor.candidate_weighting(cluster_feature_calculator=cluster_feature_calculator,
                                           cluster_method=cluster_method,
                                           exemplar_terms_dist_func=exemplar_terms_dist_func,
                                           keyphrase_selector=keyphrase_selector,
@@ -330,7 +235,6 @@ class KeyphraseExtractor:
                                           filename=file,
                                           regex=regex,
                                           frequent_word_list=frequent_word_list)
-
         else:
             extractor.candidate_selection()
             extractor.candidate_weighting()
@@ -343,6 +247,12 @@ class KeyphraseExtractor:
         recall_total = 0
         f_score_total = 0
         num_documents = 0
+
+        # Parse the frequent word list once for the model
+        kwargs = _load_frequent_word_list(**kwargs)
+
+        # Load a spacy model once for the model
+        kwargs = _load_word_embedding_model(**kwargs)
 
         eval_comp_func = kwargs.get('evaluator_compare_func', stemmed_compare)
         for file in glob.glob(input_dir + '/*'):
@@ -364,7 +274,6 @@ class KeyphraseExtractor:
                 # print(list(zip(*keyphrases))[0])
                 # print(reference)
                 print("Precision: %s, Recall: %s, F-Score: %s" % (evaluator.precision, evaluator.recall, evaluator.f_measure))
-
                 precision_total += evaluator.precision
                 recall_total += evaluator.recall
                 f_score_total += evaluator.f_measure
@@ -416,7 +325,7 @@ class KeyphraseExtractor:
 kwargs = {
     'language': 'en',
     'normalization': "stemming",
-    'n_keyphrases': 30,
+    # 'n_keyphrases': 30,
     # 'redundancy_removal': ,
     # 'n_grams': 1,
     # 'stoplist': ,
@@ -427,7 +336,7 @@ kwargs = {
     # 'normalized': ,
     # 'run_candidate_selection': ,
     # 'threshold': ,
-    # 'method': 'centroid', # COMMENT OUT FOR TopicRank!
+    'method': 'single', # COMMENT OUT FOR TopicRank!
     # 'heuristic': ,
     # 'alpha': ,
     # 'grammar': ,
@@ -437,7 +346,7 @@ kwargs = {
     # 'cutoff': ,
     # 'sigma': ,
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    # 'cluster_feature_calculator': CooccurrenceClusterFeature,
+    'cluster_feature_calculator': WordEmbeddingsClusterFeature,#WordEmbeddingsClusterFeature,
     # 'transformToDistanceMatrix': False,
     # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
@@ -445,12 +354,14 @@ kwargs = {
     # 'num_clusters': ,
     # 'cluster_calc': ,
     # 'factor': 2/3,
-    'frequent_word_list': 'data/frequent_word_lists/en_50k.txt',
+    'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',
     'min_word_count': 1000,
-    # 'evaluator_compare_func': stemmed_word_compare, #stemmed_wordwise_phrase_compare,
+    # 'frequent_word_list': ['test'],
+    'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',
+    # 'word_embedding_model':
+    # 'evaluator_compare_func': stemmed_wordwise_phrase_compare, #stemmed_wordwise_phrase_compare,
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!
 }
-
 
 def custom_testing():
     # SemEval-2010
@@ -510,8 +421,6 @@ def custom_testing():
     #         i += 1
     #         if i == 2:
     #             break
-
-
 
 
 if __name__ == '__main__':

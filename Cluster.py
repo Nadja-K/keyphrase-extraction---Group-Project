@@ -19,6 +19,7 @@ class Clustering(metaclass=ABCMeta):
         pass
 
     def get_exemplar_terms(self, clusters, cluster_features, terms, dist_func: Callable = euclid_dist):
+        terms = list(terms)
         cluster_exemplar_terms = dict()
 
         # Derive the centroids of each cluster based on the euclidean distance
@@ -98,7 +99,7 @@ class HierarchicalClustering(Clustering):
                    # distance_sort='descending',
                    ax=axes,
                    link_color_func=lambda k: link_cols[k],
-                   leaf_rotation=60.0
+                   # leaf_rotation=60.0
                    )
 
         for tick in axes.xaxis.get_major_ticks():
@@ -108,6 +109,7 @@ class HierarchicalClustering(Clustering):
         plt.close()
 
     def calc_clusters(self, num_clusters, cluster_features, labels, filename=str(time.time())):
+        labels = list(labels)
         # Anm.: die cluster_feature matrix ist NICHT immer eine symmetrische matrix (die Diagonale kann Werte != 0 haben
         # die Warnung dazu kann also ignoriert werden.
 
@@ -118,14 +120,15 @@ class HierarchicalClustering(Clustering):
         linked = linkage(cluster_features, self.method)
         clusters = fcluster(linked, num_clusters, criterion='maxclust')
 
-        print("Creating dendogram for %s" % os.path.basename(filename))
-        self._create_dendogram(linked, labels, clusters, filename)
+        # print("Creating dendogram for %s" % os.path.basename(filename))
+        # self._create_dendogram(linked, labels, clusters, filename)
 
         return clusters
 
 
 class SpectralClustering(Clustering):
     def calc_clusters(self, num_clusters, cluster_features, labels, filename=str(time.time())):
+        labels = list(labels)
         clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters).fit(cluster_features)
         return clusters.labels_
 
