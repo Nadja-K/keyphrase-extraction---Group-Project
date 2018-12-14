@@ -105,6 +105,7 @@ class WordEmbeddingsClusterFeature:
             for index2, candidate2 in enumerate(word_embeddings):
                 if index2 < index1:
                     continue
-                word_embedding_matrix[index1][index2] = cosine_similarity(word_embeddings[candidate1], word_embeddings[candidate2])[0][0]
+                word_embedding_matrix[index1][index2] = min(max(cosine_similarity(word_embeddings[candidate1], word_embeddings[candidate2])[0][0], -1), 1)
                 word_embedding_matrix[index2][index1] = word_embedding_matrix[index1][index2]
+
         return word_embedding_matrix

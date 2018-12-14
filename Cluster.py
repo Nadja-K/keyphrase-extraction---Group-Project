@@ -10,6 +10,9 @@ from abc import ABCMeta, abstractmethod
 import scipy.spatial.distance as ssd
 import time
 
+from ClusterFeatureCalculator import CooccurrenceClusterFeature, WordEmbeddingsClusterFeature, PPMIClusterFeature
+
+
 def euclid_dist(cluster_features, mean_cluster_features):
     return np.linalg.norm(cluster_features - mean_cluster_features)
 
@@ -68,7 +71,7 @@ def get_N_HexCol(N=5):
 class HierarchicalClustering(Clustering):
     def __init__(self, **kwargs):
         self.method = kwargs.get('method', 'ward')
-        self.transformToDistanceMatrix = kwargs.get('transformToDistanceMatrix', True)
+        self.cluster_feature_calculator = kwargs.get('cluster_feature_calculator', CooccurrenceClusterFeature)
 
     def _create_dendogram(self, linked, labels, clusters, filename):
         # Create hex colors for every cluster
@@ -114,8 +117,10 @@ class HierarchicalClustering(Clustering):
         # die Warnung dazu kann also ignoriert werden.
 
         # Adjust the co-occurrence matrix so that you get a distance matrix!
-        if self.transformToDistanceMatrix is True:
+        if self.cluster_feature_calculator is CooccurrenceClusterFeature or self.cluster_feature_calculator is PPMIClusterFeature:
             cluster_features = 1. / (cluster_features + 0.1)
+        elif self.cluster_feature_calculator is WordEmbeddingsClusterFeature:
+            cluster_features = 1 - cluster_features
 
         linked = linkage(cluster_features, self.method)
         clusters = fcluster(linked, num_clusters, criterion='maxclust')
@@ -127,9 +132,20 @@ class HierarchicalClustering(Clustering):
 
 
 class SpectralClustering(Clustering):
+    def __init__(self, **kwargs):
+        self.cluster_feature_calculator = kwargs.get('cluster_feature_calculator', CooccurrenceClusterFeature)
+
     def calc_clusters(self, num_clusters, cluster_features, labels, filename=str(time.time())):
         labels = list(labels)
-        clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters).fit(cluster_features)
+
+        # Adjust the feature matrix so that you get a distance matrix!
+        if self.cluster_feature_calculator is CooccurrenceClusterFeature or self.cluster_feature_calculator is PPMIClusterFeature:
+            cluster_features = 1. / (cluster_features + 0.1)
+        elif self.cluster_feature_calculator is WordEmbeddingsClusterFeature:
+            cluster_features = 1 - cluster_features
+
+        # FIXME: validate if this is actually true and if the input matrix is an affinity matrix???
+        clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters, affinity='precomputed').fit(cluster_features )
         return clusters.labels_
 
 

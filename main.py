@@ -336,7 +336,7 @@ kwargs = {
     # 'normalized': ,
     # 'run_candidate_selection': ,
     # 'threshold': ,
-    'method': 'single', # COMMENT OUT FOR TopicRank!
+    # 'method': 'ward', # COMMENT OUT FOR TopicRank!
     # 'heuristic': ,
     # 'alpha': ,
     # 'grammar': ,
@@ -347,8 +347,7 @@ kwargs = {
     # 'sigma': ,
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
     'cluster_feature_calculator': WordEmbeddingsClusterFeature,#WordEmbeddingsClusterFeature,
-    # 'transformToDistanceMatrix': False,
-    # 'cluster_method': SpectralClustering,
+    'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
     # 'regex': 'a*n+',
     # 'num_clusters': ,
