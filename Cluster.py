@@ -144,8 +144,11 @@ class SpectralClustering(Clustering):
         elif self.cluster_feature_calculator is WordEmbeddingsClusterFeature:
             cluster_features = 1 - cluster_features
 
+        # cluster_features = np.exp(- cluster_features ** 2 / (2. * 1 ** 2))
+
         # FIXME: validate if this is actually true and if the input matrix is an affinity matrix???
-        clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters, affinity='precomputed').fit(cluster_features )
+        # clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters, affinity='precomputed').fit(cluster_features )
+        clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters, n_jobs=-1).fit(cluster_features)
         return clusters.labels_
 
 

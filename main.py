@@ -32,7 +32,6 @@ class KeyphraseExtractor:
         extractor = model()
         extractor.load_document(file, language=language, normalization=normalization)
 
-        num_clusters = None
         df = None
         if frequency_file is not None:
             df = pke.load_document_frequency_file(input_file=frequency_file)
@@ -242,7 +241,7 @@ class KeyphraseExtractor:
         n_keyphrases = params.get('n_keyphrases', len(extractor.candidates))
         return extractor.get_n_best(n=n_keyphrases, redundancy_removal=redundancy_removal, stemming=(normalization == 'stemming')), extractor
 
-    def calculate_model_f_score(self, model, input_dir, references, **kwargs):
+    def calculate_model_f_score(self, model, input_dir, references, print_document_scores=True, **kwargs):
         precision_total = 0
         recall_total = 0
         f_score_total = 0
@@ -262,7 +261,8 @@ class KeyphraseExtractor:
 
             filename = os.path.splitext(os.path.basename(file))[0]
             reference = references[filename]
-            print("Processing File: %s" % filename)
+            if print_document_scores is True:
+                print("Processing File: %s" % filename)
 
             keyphrases, context = self.extract_keyphrases(model, file, **kwargs)
             # Filter out reference keyphrases that don't appear in the original text
@@ -273,7 +273,8 @@ class KeyphraseExtractor:
                 evaluator.evaluate(reference, list(zip(*keyphrases))[0])
                 # print(list(zip(*keyphrases))[0])
                 # print(reference)
-                print("Precision: %s, Recall: %s, F-Score: %s" % (evaluator.precision, evaluator.recall, evaluator.f_measure))
+                if print_document_scores is True:
+                    print("Precision: %s, Recall: %s, F-Score: %s" % (evaluator.precision, evaluator.recall, evaluator.f_measure))
                 precision_total += evaluator.precision
                 recall_total += evaluator.recall
                 f_score_total += evaluator.f_measure
@@ -346,8 +347,8 @@ kwargs = {
     # 'cutoff': ,
     # 'sigma': ,
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    'cluster_feature_calculator': WordEmbeddingsClusterFeature,#WordEmbeddingsClusterFeature,
-    'cluster_method': SpectralClustering,
+    # 'cluster_feature_calculator': WordEmbeddingsClusterFeature,#WordEmbeddingsClusterFeature,
+    # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
     # 'regex': 'a*n+',
     # 'num_clusters': ,
@@ -422,9 +423,13 @@ def custom_testing():
     #             break
 
 
-if __name__ == '__main__':
+def main():
     # Overwrite a few functions and variables so that the german language can be supported
     pke.LoadFile.normalize_POS_tags = custom_normalize_POS_tags
     pke.base.ISO_to_language['de'] = 'german'
 
     custom_testing()
+
+
+if __name__ == '__main__':
+    main()
