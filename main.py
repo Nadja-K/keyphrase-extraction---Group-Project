@@ -242,10 +242,17 @@ class KeyphraseExtractor:
         return extractor.get_n_best(n=n_keyphrases, redundancy_removal=redundancy_removal, stemming=(normalization == 'stemming')), extractor
 
     def calculate_model_f_score(self, model, input_dir, references, print_document_scores=True, **kwargs):
-        precision_total = 0
-        recall_total = 0
-        f_score_total = 0
         num_documents = 0
+
+        eval_comp_func_list = kwargs.get('evaluator_compare_func', [stemmed_compare])
+        evaluators = dict()
+        for eval_comp_func in eval_comp_func_list:
+            evaluators[str(eval_comp_func.__name__)] = {
+                'precision_total': 0,
+                'recall_total': 0,
+                'f_score_total': 0,
+                'eval_comp_func': eval_comp_func
+            }
 
         # Parse the frequent word list once for the model
         kwargs = _load_frequent_word_list(**kwargs)
@@ -253,11 +260,12 @@ class KeyphraseExtractor:
         # Load a spacy model once for the model
         kwargs = _load_word_embedding_model(**kwargs)
 
-        eval_comp_func = kwargs.get('evaluator_compare_func', stemmed_compare)
         for file in glob.glob(input_dir + '/*'):
             # make sure to initialize the evaluator clean for every run!
-            evaluator = Evaluator()
-            evaluator.compare_func = eval_comp_func
+            for key, evaluator_data in evaluators.items():
+                evaluator = Evaluator()
+                evaluator.compare_func = evaluator_data['eval_comp_func']
+                evaluators[key]['evaluator'] = evaluator
 
             filename = os.path.splitext(os.path.basename(file))[0]
             reference = references[filename]
@@ -270,22 +278,28 @@ class KeyphraseExtractor:
                 reference = self._filter_reference_keyphrases(reference, context, kwargs.get('normalization', 'stemming'))
 
             if (len(keyphrases) > 0 and len(reference) > 0):
-                evaluator.evaluate(reference, list(zip(*keyphrases))[0])
-                # print(list(zip(*keyphrases))[0])
-                # print(reference)
-                if print_document_scores is True:
-                    print("Precision: %s, Recall: %s, F-Score: %s" % (evaluator.precision, evaluator.recall, evaluator.f_measure))
-                precision_total += evaluator.precision
-                recall_total += evaluator.recall
-                f_score_total += evaluator.f_measure
+                for key, evaluator_data in evaluators.items():
+                    evaluator = evaluator_data['evaluator']
+
+                    evaluator.evaluate(reference, list(zip(*keyphrases))[0])
+                    # print(list(zip(*keyphrases))[0])
+                    # print(reference)
+                    if print_document_scores is True:
+                        print("%s - Precision: %s, Recall: %s, F-Score: %s" % (key, evaluator.precision, evaluator.recall, evaluator.f_measure))
+
+                    evaluators[key]['precision_total'] += evaluator.precision
+                    evaluators[key]['recall_total'] += evaluator.recall
+                    evaluators[key]['f_score_total'] += evaluator.f_measure
             else:
                 print("Skipping file %s for not enough reference keyphrases or found keyphrases. Found keyphrases: %s, Reference keyphrases: %s" % (filename, len(keyphrases), len(reference)))
             num_documents += 1
 
-        macro_precision = (precision_total / num_documents)
-        macro_recall = (recall_total / num_documents)
-        macro_f_score = (f_score_total / num_documents)
-        return macro_precision, macro_recall, macro_f_score
+        for key, evaluator_data in evaluators.items():
+            evaluators[key]['macro_precision'] = (evaluator_data['precision_total'] / num_documents)
+            evaluators[key]['macro_recall'] = (evaluator_data['recall_total'] / num_documents)
+            evaluators[key]['macro_f_score'] = (evaluator_data['f_score_total'] / num_documents)
+
+        return evaluators
 
     def window_generator(self, iterable, size):
         for i in range(len(iterable) - size + 1):
@@ -359,7 +373,7 @@ kwargs = {
     # 'frequent_word_list': ['test'],
     'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',
     # 'word_embedding_model':
-    # 'evaluator_compare_func': stemmed_wordwise_phrase_compare, #stemmed_wordwise_phrase_compare,
+    'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare], #stemmed_wordwise_phrase_compare,
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!
 }
 
@@ -404,8 +418,13 @@ def custom_testing():
                 kwargs['frequency_file'] = output_name
 
         print("Computing the F-Score for the Inspec Dataset with {}".format(m))
-        macro_precision, macro_recall, macro_f_score = extractor.calculate_model_f_score(m, test_folder, reference_stemmed, **kwargs)
-        print("Macro average precision: %s, recall: %s, f-score: %s" % (macro_precision, macro_recall, macro_f_score))
+        evaluators = extractor.calculate_model_f_score(m, test_folder, reference_stemmed, **kwargs)
+        for key, evaluator_data in evaluators.items():
+            macro_precision = evaluator_data['macro_precision']
+            macro_recall = evaluator_data['macro_recall']
+            macro_f_score = evaluator_data['macro_f_score']
+
+            print("%s - Macro average precision: %s, recall: %s, f-score: %s" % (key, macro_precision, macro_recall, macro_f_score))
 
     # For testing with a single raw text file.
     # for m in models:
