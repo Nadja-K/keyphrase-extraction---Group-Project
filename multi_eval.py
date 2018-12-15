@@ -24,32 +24,32 @@ _DATASETS = {
         'reference_stemmed': "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json",
         'reference_unstemmed': "../ake-datasets/datasets/SemEval-2010/references/test.combined.json",
     },
-    'DUC-2001': {
-        'train': "../ake-datasets/datasets/DUC-2001/train",
-        'test': "../ake-datasets/datasets/DUC-2001/test",
-        'reference_stemmed': "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json",
-        'reference_unstemmed': "../ake-datasets/datasets/DUC-2001/references/test.reader.json"
-    }
+    # 'DUC-2001': {
+    #     'train': "../ake-datasets/datasets/DUC-2001/train",
+    #     'test': "../ake-datasets/datasets/DUC-2001/test",
+    #     'reference_stemmed': "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json",
+    #     'reference_unstemmed': "../ake-datasets/datasets/DUC-2001/references/test.reader.json"
+    # }
 }
 
 
 all_parameter_options = {
     'normalization': ["stemming", None],
-    # # 'n_grams': [1],
-    # 'window': list(np.linspace(2,10, 5, dtype=int)),
-    # 'method': ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward'],
-    # # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    # 'cluster_method': [HierarchicalClustering, SpectralClustering],
-    # # 'keyphrase_selector': ,
-    # # 'regex': ['a*n+'],
-    # # 'num_clusters': ,
-    # # 'cluster_calc': ,
-    # 'factor': [1/4, 1/3, 1/2, 2/3, 4/5],
-    # 'frequent_word_list_file': [None, 'data/frequent_word_lists/en_50k.txt'],
-    # 'min_word_count': [1000, 5000, 10000],
-    # # 'frequent_word_list': [['test'], []],
-    # 'word_embedding_model_file': ['../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d'],
-    # # 'word_embedding_model':
+    # 'n_grams': [1],
+    'window': list(np.linspace(2, 10, 5, dtype=int)),
+    'method': ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward'],
+    # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
+    'cluster_method': [HierarchicalClustering],#, SpectralClustering],
+    # 'keyphrase_selector': ,
+    # 'regex': ['a*n+'],
+    # 'num_clusters': ,
+    # 'cluster_calc': ,
+    'factor': [1/4, 1/3, 1/2, 2/3, 4/5],
+    'frequent_word_list_file': [None, 'data/frequent_word_lists/en_50k.txt'],
+    'min_word_count': [1000, 5000, 10000],
+    # 'frequent_word_list': [['test'], []],
+    'word_embedding_model_file': ['../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d'],
+    # 'word_embedding_model':
 }
 parameter_combination_options = {
     'cluster_feature_calculator': [CooccurrenceClusterFeature, WordEmbeddingsClusterFeature],

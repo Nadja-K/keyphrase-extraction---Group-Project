@@ -8,6 +8,8 @@ import numpy as np
 from typing import Callable
 from abc import ABCMeta, abstractmethod
 import scipy.spatial.distance as ssd
+import seaborn as sns
+from sklearn.decomposition import PCA
 import time
 
 from ClusterFeatureCalculator import CooccurrenceClusterFeature, WordEmbeddingsClusterFeature, PPMIClusterFeature
@@ -20,6 +22,51 @@ def euclid_dist(cluster_features, mean_cluster_features):
 class Clustering(metaclass=ABCMeta):
     def __init__(self, **kwargs):
         pass
+
+    def _create_heatmap(self, data, labels, filename):
+        labels = list(labels)
+
+        plt.subplots(figsize=(16, 11))
+        plot = sns.heatmap(data, xticklabels=labels, yticklabels=labels, square=True)
+        plot.xaxis.set_ticks_position('top')
+        plot.xaxis.set_tick_params(rotation=90, labelsize='large')
+        plot.yaxis.set_tick_params(labelsize='large')
+        fig = plot.get_figure()
+
+        plt.title('Heatmap Feature Visualization', fontdict={'fontsize': 20})
+        plt.tight_layout()
+        fig.savefig('heatmap_graphs/' + os.path.basename(filename).split('.')[0] + ".png")
+        plt.close()
+
+    def _create_simple_cluster_visualization(self, data, labels, clusters, filename):
+        labels = list(labels)
+        clusters = list(clusters)
+        big_clusters = set([i for i in clusters if clusters.count(i) > 1])
+        num_big_clusters = len(big_clusters)
+        big_clusters = list(big_clusters)
+
+        cmap = plt.cm.get_cmap("gist_rainbow")
+        color_mapping = []
+        for cluster in clusters:
+            if clusters.count(cluster) == 1:
+                color_mapping.append((0.6, 0.6, 0.6, 1.0))
+            else:
+                color_mapping.append(cmap(float(big_clusters.index(cluster)) / num_big_clusters))
+        # Transform the data into 2 dimensions
+        pca = PCA(n_components=2).fit(data)
+        pca_2d = pca.transform(data)
+        x = pca_2d[:, 0]
+        y = pca_2d[:, 1]
+
+        fig, ax = plt.subplots(figsize=(15, 10))
+        ax.scatter(x, y, s=45, c=color_mapping)#[cmap(float(i) /num_clusters) for i in clusters])#c=clusters)
+        for i, txt in enumerate(labels):
+            ax.annotate(txt, (x[i], y[i]))
+
+        plt.title('Simplified Cluster Visualization', fontdict={'fontsize': 20})
+        plt.tight_layout()
+        fig.savefig('simple_cluster_graphs/' + os.path.basename(filename).split('.')[0] + ".png")
+        plt.close()
 
     def get_exemplar_terms(self, clusters, cluster_features, terms, dist_func: Callable = euclid_dist):
         terms = list(terms)
@@ -108,13 +155,19 @@ class HierarchicalClustering(Clustering):
         for tick in axes.xaxis.get_major_ticks():
             tick.label.set_color(D_leaf_colors[tick.label._text])
 
+        plt.title('Dendogram Cluster Visualization', fontdict={'fontsize': 20})
+        plt.tight_layout()
         plt.savefig('cluster_graphs/' + os.path.basename(filename).split('.')[0] + ".png")
         plt.close()
 
-    def calc_clusters(self, num_clusters, cluster_features, labels, filename=str(time.time())):
+    def calc_clusters(self, num_clusters, cluster_features, labels, filename=str(time.time()), draw_graphs=False):
         labels = list(labels)
         # Anm.: die cluster_feature matrix ist NICHT immer eine symmetrische matrix (die Diagonale kann Werte != 0 haben
         # die Warnung dazu kann also ignoriert werden.
+
+        if draw_graphs is True:
+            print("Creating heatmap feature visualization for %s" % os.path.basename(filename))
+            self._create_heatmap(cluster_features, labels, filename)
 
         # Adjust the co-occurrence matrix so that you get a distance matrix!
         if self.cluster_feature_calculator is CooccurrenceClusterFeature or self.cluster_feature_calculator is PPMIClusterFeature:
@@ -125,8 +178,12 @@ class HierarchicalClustering(Clustering):
         linked = linkage(cluster_features, self.method)
         clusters = fcluster(linked, num_clusters, criterion='maxclust')
 
-        # print("Creating dendogram for %s" % os.path.basename(filename))
-        # self._create_dendogram(linked, labels, clusters, filename)
+        if draw_graphs is True:
+            print("Creating dendogram for %s" % os.path.basename(filename))
+            self._create_dendogram(linked, labels, clusters, filename)
+
+            print("Creating simplified cluster visualization for %s" % os.path.basename(filename))
+            self._create_simple_cluster_visualization(cluster_features, labels, clusters, filename)
 
         return clusters
 
@@ -135,8 +192,12 @@ class SpectralClustering(Clustering):
     def __init__(self, **kwargs):
         self.cluster_feature_calculator = kwargs.get('cluster_feature_calculator', CooccurrenceClusterFeature)
 
-    def calc_clusters(self, num_clusters, cluster_features, labels, filename=str(time.time())):
+    def calc_clusters(self, num_clusters, cluster_features, labels, filename=str(time.time()), draw_graphs=False):
         labels = list(labels)
+
+        if draw_graphs is True:
+            print("Creating heatmap feature visualization for %s" % os.path.basename(filename))
+            self._create_heatmap(cluster_features, labels, filename)
 
         # Adjust the feature matrix so that you get a distance matrix!
         if self.cluster_feature_calculator is CooccurrenceClusterFeature or self.cluster_feature_calculator is PPMIClusterFeature:
@@ -144,11 +205,16 @@ class SpectralClustering(Clustering):
         elif self.cluster_feature_calculator is WordEmbeddingsClusterFeature:
             cluster_features = 1 - cluster_features
 
-        # cluster_features = np.exp(- cluster_features ** 2 / (2. * 1 ** 2))
+        cluster_features = np.exp(-0.1 * cluster_features / (cluster_features.std()))
 
         # FIXME: validate if this is actually true and if the input matrix is an affinity matrix???
-        # clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters, affinity='precomputed').fit(cluster_features )
-        clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters, n_jobs=-1).fit(cluster_features)
+        clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters, affinity='precomputed', n_jobs=-1).fit(cluster_features )
+        # clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters, n_jobs=-1).fit(cluster_features)
+
+        if draw_graphs is True:
+            print("Creating simplified cluster visualization for %s" % os.path.basename(filename))
+            self._create_simple_cluster_visualization(cluster_features, labels, clusters.labels_, filename)
+
         return clusters.labels_
 
 

@@ -11,14 +11,14 @@ class KeyCluster(LoadFile):
     def candidate_selection(self, candidate_selector, **kwargs):
         self.candidate_terms = candidate_selector.select_candidates(self, **kwargs)
 
-    def candidate_weighting(self, cluster_feature_calculator, cluster_method, exemplar_terms_dist_func, keyphrase_selector, filename, regex='a*n+', num_clusters=0, frequent_word_list=[]):
+    def candidate_weighting(self, cluster_feature_calculator, cluster_method, exemplar_terms_dist_func, keyphrase_selector, filename, regex='a*n+', num_clusters=0, frequent_word_list=[], draw_graphs=False):
         # Calculating term relatedness
         self.cluster_features = cluster_feature_calculator.calc_cluster_features(self, self.candidate_terms)
 
         # Term clustering
         if num_clusters == 0:
             num_clusters = int(2./3. * len(list(self.candidate_terms)))
-        clusters = cluster_method.calc_clusters(num_clusters, self.cluster_features, self.candidate_terms, filename=filename)
+        clusters = cluster_method.calc_clusters(num_clusters, self.cluster_features, self.candidate_terms, filename=filename, draw_graphs=draw_graphs)
         cluster_exemplar_terms = cluster_method.get_exemplar_terms(clusters, self.cluster_features, self.candidate_terms, exemplar_terms_dist_func)
 
         # Create candidate keyphrases

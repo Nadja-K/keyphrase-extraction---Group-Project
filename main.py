@@ -194,6 +194,7 @@ class KeyphraseExtractor:
             :param bool transformToDistanceMatrix
             :param spacy instanz word_embedding_model 
             :param list frequent_word_list
+            :param bool draw_graphs
             """
             candidate_selector = params.get('candidate_selector', CandidateSelector())
 
@@ -224,6 +225,7 @@ class KeyphraseExtractor:
                 'num_clusters': num_clusters
             }
             num_clusters = cluster_calc(**cluster_calc_args)
+            draw_graphs = params.get('draw_graphs', False)
 
             # Candidate Clustering, Exemplar Term Selection, Keyphrase Selection
             num_clusters = extractor.candidate_weighting(cluster_feature_calculator=cluster_feature_calculator,
@@ -233,7 +235,8 @@ class KeyphraseExtractor:
                                           num_clusters=num_clusters,
                                           filename=file,
                                           regex=regex,
-                                          frequent_word_list=frequent_word_list)
+                                          frequent_word_list=frequent_word_list,
+                                          draw_graphs=draw_graphs)
         else:
             extractor.candidate_selection()
             extractor.candidate_weighting()
@@ -361,8 +364,8 @@ kwargs = {
     # 'cutoff': ,
     # 'sigma': ,
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    # 'cluster_feature_calculator': WordEmbeddingsClusterFeature,#WordEmbeddingsClusterFeature,
-    # 'cluster_method': SpectralClustering,
+    'cluster_feature_calculator': WordEmbeddingsClusterFeature,
+    'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
     # 'regex': 'a*n+',
     # 'num_clusters': ,
@@ -374,7 +377,8 @@ kwargs = {
     'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',
     # 'word_embedding_model':
     'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare], #stemmed_wordwise_phrase_compare,
-    # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!
+    # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
+    # 'draw_graphs': True
 }
 
 def custom_testing():
