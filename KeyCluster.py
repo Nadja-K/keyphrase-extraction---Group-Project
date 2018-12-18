@@ -2,6 +2,7 @@ from pke.base import LoadFile
 from pke.data_structures import Candidate
 from collections import defaultdict
 
+
 class KeyCluster(LoadFile):
     def __init__(self):
         super(KeyCluster, self).__init__()

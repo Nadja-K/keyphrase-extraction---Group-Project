@@ -83,7 +83,6 @@ def _load_word_embedding_model(**kwargs):
 
 def custom_normalize_POS_tags(self):
     """Normalizes the PoS tags from udp-penn to UD."""
-
     if self.language == 'en':
         # iterate throughout the sentences
         for i, sentence in enumerate(self.sentences):

@@ -1,7 +1,7 @@
 import pke
 import spacy
 from nltk.corpus import stopwords
-from pke import compute_document_frequency, compute_lda_model
+from pke import compute_document_frequency, compute_lda_model, Document
 from string import punctuation
 import glob
 import os
@@ -20,17 +20,17 @@ from KeyphraseSelector import KeyphraseSelector
 from evaluation import Evaluator, stemmed_wordwise_phrase_compare, stemmed_compare, stemmed_word_compare
 from Cluster import euclid_dist
 from helper import compute_df, calc_num_cluster, custom_normalize_POS_tags, _load_word_embedding_model, _load_frequent_word_list
+from DatabaseHandler import DatabaseHandler
 
+pke.base.ISO_to_language['de'] = 'german'
+pke.LoadFile.normalize_pos_tags = custom_normalize_POS_tags
 
 class KeyphraseExtractor:
-    def extract_keyphrases(self, model, file, **params):
+    def extract_keyphrases(self, model, extractor, filename, **params):
         language = params.get('language', 'en')
         normalization = params.get('normalization', 'stemming')
         frequency_file = params.get('frequency_file', None)
         redundancy_removal = params.get('redundancy_removal', False)
-
-        extractor = model()
-        extractor.load_document(file, language=language, normalization=normalization)
 
         df = None
         if frequency_file is not None:
@@ -233,7 +233,7 @@ class KeyphraseExtractor:
                                           exemplar_terms_dist_func=exemplar_terms_dist_func,
                                           keyphrase_selector=keyphrase_selector,
                                           num_clusters=num_clusters,
-                                          filename=file,
+                                          filename=filename,
                                           regex=regex,
                                           frequent_word_list=frequent_word_list,
                                           draw_graphs=draw_graphs)
@@ -244,7 +244,56 @@ class KeyphraseExtractor:
         n_keyphrases = params.get('n_keyphrases', len(extractor.candidates))
         return extractor.get_n_best(n=n_keyphrases, redundancy_removal=redundancy_removal, stemming=(normalization == 'stemming')), extractor
 
-    def calculate_model_f_score(self, model, input_dir, references, print_document_scores=True, **kwargs):
+    def _evaluate_document(self, model, input_document, references, evaluators, print_document_scores=True, **kwargs):
+        language = kwargs.get('language', 'en')
+        normalization = kwargs.get('normalization', 'stemming')
+
+        # make sure to initialize the evaluator clean for every run!
+        for key, evaluator_data in evaluators.items():
+            evaluator = Evaluator()
+            evaluator.compare_func = evaluator_data['eval_comp_func']
+            evaluators[key]['evaluator'] = evaluator
+
+        if isinstance(input_document, str):
+            filename = os.path.splitext(os.path.basename(input_document))[0]
+            extractor = model()
+            extractor.load_document(input_document, language=language, normalization=normalization)
+        elif isinstance(input_document, dict):
+            filename = input_document['id']
+            extractor = input_document['document']
+        reference = references[filename]
+
+        if print_document_scores is True:
+            print("Processing File: %s" % filename)
+
+            keyphrases, context = self.extract_keyphrases(model, extractor, filename, **kwargs)
+        # Filter out reference keyphrases that don't appear in the original text
+        if kwargs.get('filter_reference_keyphrases', False) is True:
+            reference = self._filter_reference_keyphrases(reference, context, kwargs.get('normalization', 'stemming'))
+
+        print(keyphrases)
+        print(reference)
+
+        if (len(keyphrases) > 0 and len(reference) > 0):
+            for key, evaluator_data in evaluators.items():
+                evaluator = evaluator_data['evaluator']
+
+                evaluator.evaluate(reference, list(zip(*keyphrases))[0])
+                if print_document_scores is True:
+                    print("%s - Precision: %s, Recall: %s, F-Score: %s" % (
+                    key, evaluator.precision, evaluator.recall, evaluator.f_measure))
+
+                evaluators[key]['precision_total'] += evaluator.precision
+                evaluators[key]['recall_total'] += evaluator.recall
+                evaluators[key]['f_score_total'] += evaluator.f_measure
+        else:
+            print(
+                "Skipping file %s for not enough reference keyphrases or found keyphrases. Found keyphrases: %s, Reference keyphrases: %s" % (
+                filename, len(keyphrases), len(reference)))
+
+        return evaluators
+
+    def calculate_model_f_score(self, model, input_data=None, references=None, print_document_scores=True, **kwargs):
         num_documents = 0
 
         eval_comp_func_list = kwargs.get('evaluator_compare_func', [stemmed_compare])
@@ -263,44 +312,33 @@ class KeyphraseExtractor:
         # Load a spacy model once for the model
         kwargs = _load_word_embedding_model(**kwargs)
 
-        for file in glob.glob(input_dir + '/*'):
-            # make sure to initialize the evaluator clean for every run!
-            for key, evaluator_data in evaluators.items():
-                evaluator = Evaluator()
-                evaluator.compare_func = evaluator_data['eval_comp_func']
-                evaluators[key]['evaluator'] = evaluator
+        if input_data is None or references is None:
+            print("No input directory or reference list set, loading documents from the database...")
+            db_handler = DatabaseHandler()
+            documents, references = db_handler.load_documents_from_db(model, **kwargs)
+            for key, doc in documents.items():
+                self._evaluate_document(model, doc, references, evaluators, print_document_scores=print_document_scores, **kwargs)
+                num_documents += 1
+                self._calc_avg_scores(evaluators, num_documents, print_document_scores=print_document_scores)
+        else:
+            for file in glob.glob(input_data + '/*'):
+                evaluators = self._evaluate_document(model, file, references, evaluators,
+                                                     print_document_scores=print_document_scores, **kwargs)
+                num_documents += 1
+                self._calc_avg_scores(evaluators, num_documents, print_document_scores=print_document_scores)
 
-            filename = os.path.splitext(os.path.basename(file))[0]
-            reference = references[filename]
-            if print_document_scores is True:
-                print("Processing File: %s" % filename)
+        return self._calc_avg_scores(evaluators, num_documents, print_document_scores=False)
 
-            keyphrases, context = self.extract_keyphrases(model, file, **kwargs)
-            # Filter out reference keyphrases that don't appear in the original text
-            if kwargs.get('filter_reference_keyphrases', False) is True:
-                reference = self._filter_reference_keyphrases(reference, context, kwargs.get('normalization', 'stemming'))
-
-            if (len(keyphrases) > 0 and len(reference) > 0):
-                for key, evaluator_data in evaluators.items():
-                    evaluator = evaluator_data['evaluator']
-
-                    evaluator.evaluate(reference, list(zip(*keyphrases))[0])
-                    # print(list(zip(*keyphrases))[0])
-                    # print(reference)
-                    if print_document_scores is True:
-                        print("%s - Precision: %s, Recall: %s, F-Score: %s" % (key, evaluator.precision, evaluator.recall, evaluator.f_measure))
-
-                    evaluators[key]['precision_total'] += evaluator.precision
-                    evaluators[key]['recall_total'] += evaluator.recall
-                    evaluators[key]['f_score_total'] += evaluator.f_measure
-            else:
-                print("Skipping file %s for not enough reference keyphrases or found keyphrases. Found keyphrases: %s, Reference keyphrases: %s" % (filename, len(keyphrases), len(reference)))
-            num_documents += 1
-
+    def _calc_avg_scores(self, evaluators, num_documents, print_document_scores=True):
         for key, evaluator_data in evaluators.items():
             evaluators[key]['macro_precision'] = (evaluator_data['precision_total'] / num_documents)
             evaluators[key]['macro_recall'] = (evaluator_data['recall_total'] / num_documents)
             evaluators[key]['macro_f_score'] = (evaluator_data['f_score_total'] / num_documents)
+
+            if print_document_scores is True:
+                print("%s - Macro average precision: %s, recall: %s, f-score: %s" % (
+                    key, evaluators[key]['macro_precision'], evaluators[key]['macro_recall'],
+                    evaluators[key]['macro_f_score']))
 
         return evaluators
 
@@ -341,7 +379,7 @@ class KeyphraseExtractor:
 
 
 kwargs = {
-    'language': 'en',
+    'language': 'de',
     'normalization': "stemming",
     # 'n_keyphrases': 30,
     # 'redundancy_removal': ,
@@ -364,22 +402,49 @@ kwargs = {
     # 'cutoff': ,
     # 'sigma': ,
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    'cluster_feature_calculator': WordEmbeddingsClusterFeature,
-    'cluster_method': SpectralClustering,
+    # 'cluster_feature_calculator': WordEmbeddingsClusterFeature,
+    # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
-    # 'regex': 'a*n+',
+    'regex': 'n+',
     # 'num_clusters': ,
     # 'cluster_calc': ,
-    # 'factor': 2/3,
-    'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',
+    'factor': 1/10,
+    'frequent_word_list_file': 'data/frequent_word_lists/de_50k.txt',
     'min_word_count': 1000,
     # 'frequent_word_list': ['test'],
-    'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',
+    # 'word_embedding_model_file': 'de_core_news_sm',#'../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',
     # 'word_embedding_model':
     'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare], #stemmed_wordwise_phrase_compare,
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
-    # 'draw_graphs': True
+    # 'draw_graphs': True,
+    'batch_size': 50,
+    'reference_table': 'stemmed_filtered_stemmed',
+    # 'table': 'pos_tags'
 }
+
+
+def heise_eval():
+    extractor = KeyphraseExtractor()
+    models = [
+        KeyCluster,
+        # TfIdf,
+        # TopicRank,
+        # SingleRank,
+        # TextRank,
+        # KPMiner
+    ]
+
+    for m in models:
+        print("Computing the F-Score for the Heise Dataset with {}".format(m))
+        evaluators = extractor.calculate_model_f_score(m, **kwargs)
+        for key, evaluator_data in evaluators.items():
+            macro_precision = evaluator_data['macro_precision']
+            macro_recall = evaluator_data['macro_recall']
+            macro_f_score = evaluator_data['macro_f_score']
+
+            print("%s - Macro average precision: %s, recall: %s, f-score: %s" % (
+            key, macro_precision, macro_recall, macro_f_score))
+
 
 def custom_testing():
     # SemEval-2010
@@ -422,7 +487,7 @@ def custom_testing():
                 kwargs['frequency_file'] = output_name
 
         print("Computing the F-Score for the Inspec Dataset with {}".format(m))
-        evaluators = extractor.calculate_model_f_score(m, test_folder, reference_stemmed, **kwargs)
+        evaluators = extractor.calculate_model_f_score(m, input_data=test_folder, references=reference_stemmed, **kwargs)
         for key, evaluator_data in evaluators.items():
             macro_precision = evaluator_data['macro_precision']
             macro_recall = evaluator_data['macro_recall']
@@ -451,7 +516,8 @@ def main():
     pke.LoadFile.normalize_POS_tags = custom_normalize_POS_tags
     pke.base.ISO_to_language['de'] = 'german'
 
-    custom_testing()
+    # custom_testing()
+    heise_eval()
 
 
 if __name__ == '__main__':
