@@ -1,4 +1,7 @@
+import numpy as np
+
 import pke
+import sklearn
 import spacy
 from nltk.corpus import stopwords
 from pke import compute_document_frequency, compute_lda_model, Document
@@ -263,16 +266,14 @@ class KeyphraseExtractor:
             extractor = input_document['document']
         reference = references[filename]
 
-        if print_document_scores is True:
-            print("Processing File: %s" % filename)
-
-            keyphrases, context = self.extract_keyphrases(model, extractor, filename, **kwargs)
+        print("Processing File: %s" % filename)
+        keyphrases, context = self.extract_keyphrases(model, extractor, filename, **kwargs)
         # Filter out reference keyphrases that don't appear in the original text
         if kwargs.get('filter_reference_keyphrases', False) is True:
             reference = self._filter_reference_keyphrases(reference, context, kwargs.get('normalization', 'stemming'))
 
-        print(keyphrases)
-        print(reference)
+        # print(keyphrases)
+        # print(reference)
 
         if (len(keyphrases) > 0 and len(reference) > 0):
             for key, evaluator_data in evaluators.items():
@@ -294,7 +295,7 @@ class KeyphraseExtractor:
         return evaluators
 
     def calculate_model_f_score(self, model, input_data=None, references=None, print_document_scores=True, **kwargs):
-        num_documents = 0
+        num_documents_evaluated = 0
 
         eval_comp_func_list = kwargs.get('evaluator_compare_func', [stemmed_compare])
         evaluators = dict()
@@ -313,21 +314,31 @@ class KeyphraseExtractor:
         kwargs = _load_word_embedding_model(**kwargs)
 
         if input_data is None or references is None:
-            print("No input directory or reference list set, loading documents from the database...")
             db_handler = DatabaseHandler()
-            documents, references = db_handler.load_documents_from_db(model, **kwargs)
-            for key, doc in documents.items():
-                self._evaluate_document(model, doc, references, evaluators, print_document_scores=print_document_scores, **kwargs)
-                num_documents += 1
-                self._calc_avg_scores(evaluators, num_documents, print_document_scores=print_document_scores)
+            # Get the total amount of documents from the database if no specific amount was set in kwargs
+            num_documents = kwargs.get('num_documents', 0)
+            if num_documents == 0:
+                num_documents = db_handler.get_num_documents()
+
+            # Load the specified number of documents in batches
+            print("No input directory or reference list set, loading %s documents from the database..." % num_documents)
+            batch_size = kwargs.get('batch_size', 100)
+            while ((num_documents - batch_size) > 0):
+                documents, references = db_handler.load_documents_from_db(model, **kwargs)
+                for key, doc in documents.items():
+                    self._evaluate_document(model, doc, references, evaluators, print_document_scores=print_document_scores, **kwargs)
+                    num_documents_evaluated += 1
+                    self._calc_avg_scores(evaluators, num_documents_evaluated, print_document_scores=print_document_scores)
+                num_documents -= batch_size
+                print("Done with batch.")
         else:
             for file in glob.glob(input_data + '/*'):
                 evaluators = self._evaluate_document(model, file, references, evaluators,
                                                      print_document_scores=print_document_scores, **kwargs)
-                num_documents += 1
-                self._calc_avg_scores(evaluators, num_documents, print_document_scores=print_document_scores)
+                num_documents_evaluated += 1
+                self._calc_avg_scores(evaluators, num_documents_evaluated, print_document_scores=print_document_scores)
 
-        return self._calc_avg_scores(evaluators, num_documents, print_document_scores=False)
+        return self._calc_avg_scores(evaluators, num_documents_evaluated, print_document_scores=False)
 
     def _calc_avg_scores(self, evaluators, num_documents, print_document_scores=True):
         for key, evaluator_data in evaluators.items():
@@ -336,7 +347,7 @@ class KeyphraseExtractor:
             evaluators[key]['macro_f_score'] = (evaluator_data['f_score_total'] / num_documents)
 
             if print_document_scores is True:
-                print("%s - Macro average precision: %s, recall: %s, f-score: %s" % (
+                print("%s - Current Macro average precision: %s, recall: %s, f-score: %s" % (
                     key, evaluators[key]['macro_precision'], evaluators[key]['macro_recall'],
                     evaluators[key]['macro_f_score']))
 
@@ -379,9 +390,9 @@ class KeyphraseExtractor:
 
 
 kwargs = {
-    'language': 'de',
+    # 'language': 'de',
     'normalization': "stemming",
-    # 'n_keyphrases': 30,
+    # 'n_keyphrases': 10,
     # 'redundancy_removal': ,
     # 'n_grams': 1,
     # 'stoplist': ,
@@ -401,23 +412,29 @@ kwargs = {
     # 'lasf': ,
     # 'cutoff': ,
     # 'sigma': ,
+
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    # 'cluster_feature_calculator': WordEmbeddingsClusterFeature,
-    # 'cluster_method': SpectralClustering,
+    'cluster_feature_calculator': WordEmbeddingsClusterFeature,
+    # 'word_embedding_comp_func': np.dot, #sklearn.metrics.pairwise.cosine_similarity,
+    'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
-    'regex': 'n+',
-    # 'num_clusters': ,
+    # 'regex': 'n{1,3}',
+    # 'num_clusters': 20,
     # 'cluster_calc': ,
-    'factor': 1/10,
-    'frequent_word_list_file': 'data/frequent_word_lists/de_50k.txt',
+    # 'factor': 1/10,
+    'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',
     'min_word_count': 1000,
     # 'frequent_word_list': ['test'],
-    # 'word_embedding_model_file': 'de_core_news_sm',#'../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',
+    'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',# 'de_core_news_sm',
     # 'word_embedding_model':
     'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare], #stemmed_wordwise_phrase_compare,
+
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
-    # 'draw_graphs': True,
-    'batch_size': 50,
+    'draw_graphs': True,
+    # 'print_document_scores': False,
+
+    'num_documents': 200,
+    'batch_size': 100,
     'reference_table': 'stemmed_filtered_stemmed',
     # 'table': 'pos_tags'
 }
@@ -437,6 +454,7 @@ def heise_eval():
     for m in models:
         print("Computing the F-Score for the Heise Dataset with {}".format(m))
         evaluators = extractor.calculate_model_f_score(m, **kwargs)
+        print("\n\n")
         for key, evaluator_data in evaluators.items():
             macro_precision = evaluator_data['macro_precision']
             macro_recall = evaluator_data['macro_recall']
@@ -456,11 +474,6 @@ def custom_testing():
     train_folder = "../ake-datasets/datasets/Inspec/train"
     test_folder = "../ake-datasets/datasets/Inspec/dev"
     reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
-
-    # Heise
-    ## train_folder = "../ake-datasets/datasets/Inspec/train"
-    # test_folder = "../parsed"
-    # reference_stemmed_file = ""
 
     # DUC-2001
     # train_folder = "../ake-datasets/datasets/DUC-2001/train"
@@ -488,6 +501,7 @@ def custom_testing():
 
         print("Computing the F-Score for the Inspec Dataset with {}".format(m))
         evaluators = extractor.calculate_model_f_score(m, input_data=test_folder, references=reference_stemmed, **kwargs)
+        print("\n\n")
         for key, evaluator_data in evaluators.items():
             macro_precision = evaluator_data['macro_precision']
             macro_recall = evaluator_data['macro_recall']
@@ -500,24 +514,14 @@ def custom_testing():
     #     keyphrases = extractor.extract_keyphrases(m, 'test_input.txt', **kwargs)
     #     print(keyphrases)
 
-    # for m in models:
-    #     i = 0
-    #     for file in glob.glob(heise_folder + '/*'):
-    #         if i >= 0:
-    #             keyphrases = extractor.extract_keyphrases(m, file, **kwargs)
-    #             print(keyphrases)
-    #         i += 1
-    #         if i == 2:
-    #             break
-
 
 def main():
     # Overwrite a few functions and variables so that the german language can be supported
     pke.LoadFile.normalize_POS_tags = custom_normalize_POS_tags
     pke.base.ISO_to_language['de'] = 'german'
 
-    # custom_testing()
-    heise_eval()
+    custom_testing()
+    # heise_eval()
 
 
 if __name__ == '__main__':

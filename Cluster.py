@@ -11,6 +11,7 @@ import scipy.spatial.distance as ssd
 import seaborn as sns
 from sklearn.decomposition import PCA
 import time
+import logging
 
 from ClusterFeatureCalculator import CooccurrenceClusterFeature, WordEmbeddingsClusterFeature, PPMIClusterFeature
 
@@ -22,6 +23,24 @@ def euclid_dist(cluster_features, mean_cluster_features):
 class Clustering(metaclass=ABCMeta):
     def __init__(self, **kwargs):
         pass
+
+    def _transform_to_distance_matrix(self, cluster_features):
+        # Adjust the feature matrix so that you get a distance matrix!
+        if self.cluster_feature_calculator in [CooccurrenceClusterFeature, PPMIClusterFeature]:
+            cluster_features = 1. / (cluster_features + 0.1)
+
+        elif self.cluster_feature_calculator is WordEmbeddingsClusterFeature:
+            # Calculate a cosine distance matrix
+            if self.word_embedding_comp_func is sklearn.metrics.pairwise.cosine_similarity:
+                cluster_features = 1 - cluster_features
+            elif self.word_embedding_comp_func is np.dot:
+                # FIXME: ensure that this is the correct way to turn this into a distance matrix
+                cluster_features = 1. / (cluster_features + 0.1)
+            else:
+                logging.warning("The input matrix for the clustering was not re-calculated into a distance matrix. "
+                                "Make sure this is actually what you want.")
+
+        return cluster_features
 
     def _create_heatmap(self, data, labels, filename):
         labels = list(labels)
@@ -119,6 +138,7 @@ class HierarchicalClustering(Clustering):
     def __init__(self, **kwargs):
         self.method = kwargs.get('method', 'ward')
         self.cluster_feature_calculator = kwargs.get('cluster_feature_calculator', CooccurrenceClusterFeature)
+        self.word_embedding_comp_func = kwargs.get('word_embedding_comp_func', sklearn.metrics.pairwise.cosine_similarity)
 
     def _create_dendogram(self, linked, labels, clusters, filename):
         # Create hex colors for every cluster
@@ -166,14 +186,15 @@ class HierarchicalClustering(Clustering):
         # die Warnung dazu kann also ignoriert werden.
 
         if draw_graphs is True:
-            print("Creating heatmap feature visualization for %s" % os.path.basename(filename))
-            self._create_heatmap(cluster_features, labels, filename)
+            print("Creating similarity heatmap feature visualization for %s" % os.path.basename(filename))
+            self._create_heatmap(cluster_features, labels, filename + "_hierarchical_similarity")
 
-        # Adjust the co-occurrence matrix so that you get a distance matrix!
-        if self.cluster_feature_calculator is CooccurrenceClusterFeature or self.cluster_feature_calculator is PPMIClusterFeature:
-            cluster_features = 1. / (cluster_features + 0.1)
-        elif self.cluster_feature_calculator is WordEmbeddingsClusterFeature:
-            cluster_features = 1 - cluster_features
+        # Adjust the feature matrix so that you get a distance matrix!
+        cluster_features = self._transform_to_distance_matrix(cluster_features)
+
+        if draw_graphs is True:
+            print("Creating distance heatmap feature visualization for %s" % os.path.basename(filename))
+            self._create_heatmap(cluster_features, labels, filename + "_hierarchical_distance")
 
         linked = linkage(cluster_features, self.method)
         clusters = fcluster(linked, num_clusters, criterion='maxclust')
@@ -183,7 +204,7 @@ class HierarchicalClustering(Clustering):
             self._create_dendogram(linked, labels, clusters, filename)
 
             print("Creating simplified cluster visualization for %s" % os.path.basename(filename))
-            self._create_simple_cluster_visualization(cluster_features, labels, clusters, filename)
+            self._create_simple_cluster_visualization(cluster_features, labels, clusters, filename + "_hierarchical")
 
         return clusters
 
@@ -191,29 +212,32 @@ class HierarchicalClustering(Clustering):
 class SpectralClustering(Clustering):
     def __init__(self, **kwargs):
         self.cluster_feature_calculator = kwargs.get('cluster_feature_calculator', CooccurrenceClusterFeature)
+        self.word_embedding_comp_func = kwargs.get('word_embedding_comp_func', sklearn.metrics.pairwise.cosine_similarity)
 
     def calc_clusters(self, num_clusters, cluster_features, labels, filename=str(time.time()), draw_graphs=False):
         labels = list(labels)
 
         if draw_graphs is True:
-            print("Creating heatmap feature visualization for %s" % os.path.basename(filename))
-            self._create_heatmap(cluster_features, labels, filename)
+            print("Creating similarity heatmap feature visualization for %s" % os.path.basename(filename))
+            self._create_heatmap(cluster_features, labels, filename + "_spectral_similarity")
 
         # Adjust the feature matrix so that you get a distance matrix!
-        if self.cluster_feature_calculator is CooccurrenceClusterFeature or self.cluster_feature_calculator is PPMIClusterFeature:
-            cluster_features = 1. / (cluster_features + 0.1)
-        elif self.cluster_feature_calculator is WordEmbeddingsClusterFeature:
-            cluster_features = 1 - cluster_features
-
-        cluster_features = np.exp(-0.1 * cluster_features / (cluster_features.std()))
-
-        # FIXME: validate if this is actually true and if the input matrix is an affinity matrix???
-        clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters, affinity='precomputed', n_jobs=-1).fit(cluster_features )
-        # clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters, n_jobs=-1).fit(cluster_features)
+        cluster_features = self._transform_to_distance_matrix(cluster_features)
 
         if draw_graphs is True:
+            print("Creating distance heatmap feature visualization for %s" % os.path.basename(filename))
+            self._create_heatmap(cluster_features, labels, filename + "_spectral_distance")
+
+        # Calculate an affinity matrix from the distance matrix
+        cluster_features = np.exp(-0.1 * cluster_features / (cluster_features.std()))
+        if draw_graphs is True:
+            print("Creating affinity heatmap feature visualization for %s" % os.path.basename(filename))
+            self._create_heatmap(cluster_features, labels, filename + "_spectral_affinity")
+
+        clusters = sklearn.cluster.SpectralClustering(n_clusters=num_clusters, affinity='precomputed', n_jobs=-1).fit(cluster_features )
+        if draw_graphs is True:
             print("Creating simplified cluster visualization for %s" % os.path.basename(filename))
-            self._create_simple_cluster_visualization(cluster_features, labels, clusters.labels_, filename)
+            self._create_simple_cluster_visualization(cluster_features, labels, clusters.labels_, filename + "_spectral")
 
         return clusters.labels_
 

@@ -1,1 +1,4 @@
 .idea/*
+experiments/*
+*.csv
+*.txt

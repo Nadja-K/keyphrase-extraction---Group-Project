@@ -13,6 +13,12 @@ class DatabaseHandler:
     def reset_current_index(self):
         self._current_index = 0
 
+    def get_num_documents(self):
+        with r.connect(self._host, self._port, db='keyphrase_extraction') as conn:
+            num_documents = r.table('documents').count().run(conn)
+
+            return num_documents
+
     def load_documents_from_db(self, model, **kwargs):
         """
         Loads a set number of pre-parsed documents from the database and returns them as KeyCluster instances.

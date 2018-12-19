@@ -2,6 +2,7 @@ import string
 import numpy as np
 from collections import defaultdict
 
+import sklearn
 import spacy
 from pke.data_structures import Candidate
 from sklearn.metrics.pairwise import cosine_similarity
@@ -81,6 +82,7 @@ class WordEmbeddingsClusterFeature:
         if self.nlp is None:
             print("Loading word embedding model in ClusterFeatureCalculator")
             self.nlp = spacy.load('en_vectors_web_lg')
+        self.comp_func = kwargs.get('word_embedding_comp_func', sklearn.metrics.pairwise.cosine_similarity)
 
     def calc_cluster_features(self, context, filtered_candidate_terms):
         word_embedding_matrix = np.zeros((len(filtered_candidate_terms), len(filtered_candidate_terms)))
@@ -100,12 +102,23 @@ class WordEmbeddingsClusterFeature:
             # Remove the possible excess space and get the (mean) embedding vector
             word_embeddings[candidate] = self.nlp(surface_forms_in_model[:-1]).vector.reshape(1, -1)
 
-        # Calculate the cosine similarity matrix
+        # Calculate the similarity matrix
         for index1, candidate1 in enumerate(word_embeddings):
             for index2, candidate2 in enumerate(word_embeddings):
                 if index2 < index1:
                     continue
-                word_embedding_matrix[index1][index2] = min(max(cosine_similarity(word_embeddings[candidate1], word_embeddings[candidate2])[0][0], -1), 1)
+
+                # Different similarity metrics need to be handled differently
+                if hasattr(sklearn.metrics.pairwise, self.comp_func.__name__):
+                    if self.comp_func is sklearn.metrics.pairwise.cosine_similarity:
+                        word_embedding_matrix[index1][index2] = min(
+                            max(self.comp_func(word_embeddings[candidate1], word_embeddings[candidate2])[0][0], -1), 1)
+                    else:
+                        word_embedding_matrix[index1][index2] = \
+                        self.comp_func(word_embeddings[candidate1], word_embeddings[candidate2])[0][0]
+                else:
+                    word_embedding_matrix[index1][index2] = self.comp_func(word_embeddings[candidate1][0], word_embeddings[candidate2][0])
+
                 word_embedding_matrix[index2][index1] = word_embedding_matrix[index1][index2]
 
         return word_embedding_matrix

@@ -6,6 +6,7 @@ from nltk.tag.mapping import map_tag
 import logging
 import spacy
 import numpy as np
+import time
 
 _SPACY_MODELS = {
     'en_vectors_web_lg',
@@ -53,9 +54,11 @@ def _load_frequent_word_list(**kwargs):
         if frequent_word_list_path.split('/')[-1].startswith('en_') and language == 'de':
             logging.warning("The language is set to german while possibly using a english frequent word list. Make "
                             "sure you have set frequent_word_list and language to the correct values.")
+            time.sleep(10)
         elif frequent_word_list_path.split('/')[-1].startswith('de_') and language == 'en':
             logging.warning("The language is set to english while possibly using a german frequent word list. Make "
                             "sure you have set frequent_word_list and language to the correct values.")
+            time.sleep(10)
 
         min_word_count = kwargs.get('min_word_count', 10000)
         frequent_word_list = parse_frequent_word_list(frequent_word_list_path, min_word_count=min_word_count,
