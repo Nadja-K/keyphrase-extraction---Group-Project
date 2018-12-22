@@ -22,7 +22,8 @@ from Cluster import HierarchicalClustering, SpectralClustering
 from KeyphraseSelector import KeyphraseSelector
 from evaluation import Evaluator, stemmed_wordwise_phrase_compare, stemmed_compare, stemmed_word_compare
 from Cluster import euclid_dist
-from helper import compute_df, calc_num_cluster, custom_normalize_POS_tags, _load_word_embedding_model, _load_frequent_word_list
+from helper import compute_df, calc_num_cluster, custom_normalize_POS_tags, _load_word_embedding_model, \
+    _load_frequent_word_list, compute_global_cooccurrence, load_global_cooccurrence_matrix
 from DatabaseHandler import DatabaseHandler
 
 pke.base.ISO_to_language['de'] = 'german'
@@ -313,6 +314,9 @@ class KeyphraseExtractor:
         # Load a spacy model once for the model
         kwargs = _load_word_embedding_model(**kwargs)
 
+        # Load the global cooccurrence matrix if specified
+        kwargs = load_global_cooccurrence_matrix(**kwargs)
+
         if input_data is None or references is None:
             db_handler = DatabaseHandler()
             # Get the total amount of documents from the database if no specific amount was set in kwargs
@@ -323,7 +327,7 @@ class KeyphraseExtractor:
             # Load the specified number of documents in batches
             print("No input directory or reference list set, loading %s documents from the database..." % num_documents)
             batch_size = kwargs.get('batch_size', 100)
-            while ((num_documents - batch_size) > 0):
+            while (num_documents > 0):
                 documents, references = db_handler.load_documents_from_db(model, **kwargs)
                 for key, doc in documents.items():
                     self._evaluate_document(model, doc, references, evaluators, print_document_scores=print_document_scores, **kwargs)
@@ -390,7 +394,7 @@ class KeyphraseExtractor:
 
 
 kwargs = {
-    # 'language': 'de',
+    'language': 'de',
     'normalization': "stemming",
     # 'n_keyphrases': 10,
     # 'redundancy_removal': ,
@@ -414,23 +418,24 @@ kwargs = {
     # 'sigma': ,
 
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    'cluster_feature_calculator': WordEmbeddingsClusterFeature,
-    # 'word_embedding_comp_func': np.dot, #sklearn.metrics.pairwise.cosine_similarity,
-    'cluster_method': SpectralClustering,
+    'cluster_feature_calculator': PPMIClusterFeature,#WordEmbeddingsClusterFeature,
+    # 'word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
+    'global_cooccurrence_matrix': 'heise_out.cooccurrence',#'semeval_out.cooccurrence',# 'inspec_out.cooccurrence',
+    # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
-    # 'regex': 'n{1,3}',
-    # 'num_clusters': 20,
+    'regex': 'n{1,3}',
+    'num_clusters': 20,
     # 'cluster_calc': ,
-    # 'factor': 1/10,
-    'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',
+    'factor': 1/10,
+    'frequent_word_list_file': 'data/frequent_word_lists/de_50k.txt',#'data/frequent_word_lists/en_50k.txt',#'data/frequent_word_lists/de_50k.txt',
     'min_word_count': 1000,
     # 'frequent_word_list': ['test'],
-    'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',# 'de_core_news_sm',
+    # 'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',#"/video2/keyphrase_extraction/word_embedding_models/german/devmount/la_vectors_devmount",#
     # 'word_embedding_model':
     'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare], #stemmed_wordwise_phrase_compare,
 
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
-    'draw_graphs': True,
+    # 'draw_graphs': True,
     # 'print_document_scores': False,
 
     'num_documents': 200,
@@ -451,6 +456,9 @@ def heise_eval():
         # KPMiner
     ]
 
+    # print("Computing the global cooccurrence matrix.")
+    # compute_global_cooccurrence("heise_out.cooccurrence", **kwargs)
+
     for m in models:
         print("Computing the F-Score for the Heise Dataset with {}".format(m))
         evaluators = extractor.calculate_model_f_score(m, **kwargs)
@@ -470,10 +478,19 @@ def custom_testing():
     # test_folder = "../ake-datasets/datasets/SemEval-2010/test"
     # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
 
+    # Only needs to be done once for a dataset
+    # print("Computing the global cooccurrence matrix.")
+    # compute_document_cooccurrence(test_folder, "semeval_out.cooccurrence", **kwargs)
+    # compute_global_cooccurrence(test_folder, "semeval_out.cooccurrence", **kwargs)
+
     # Inspec
     train_folder = "../ake-datasets/datasets/Inspec/train"
     test_folder = "../ake-datasets/datasets/Inspec/dev"
     reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+
+    # Only needs to be done once for a dataset
+    # print("Computing the global cooccurrence matrix.")
+    # compute_global_cooccurrence("inspec_out.cooccurrence", input_dir=test_folder, **kwargs)
 
     # DUC-2001
     # train_folder = "../ake-datasets/datasets/DUC-2001/train"
@@ -520,8 +537,8 @@ def main():
     pke.LoadFile.normalize_POS_tags = custom_normalize_POS_tags
     pke.base.ISO_to_language['de'] = 'german'
 
-    custom_testing()
-    # heise_eval()
+    # custom_testing()
+    heise_eval()
 
 
 if __name__ == '__main__':

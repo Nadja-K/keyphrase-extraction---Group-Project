@@ -22,6 +22,9 @@ class KeyCluster(LoadFile):
         clusters = cluster_method.calc_clusters(num_clusters, self.cluster_features, self.candidate_terms, filename=filename, draw_graphs=draw_graphs)
         cluster_exemplar_terms = cluster_method.get_exemplar_terms(clusters, self.cluster_features, self.candidate_terms, exemplar_terms_dist_func)
 
+        # Alternative to clustering: pick random exemplar terms
+        # cluster_exemplar_terms = cluster_method.get_random_exemplar_terms(num_clusters, self.candidate_terms)
+
         # Create candidate keyphrases
         candidate_keyphrases = keyphrase_selector.select_candidate_keyphrases(self.sentences, regex=regex)
 

@@ -1,5 +1,8 @@
+from collections import defaultdict
 from string import punctuation
-from pke import compute_document_frequency, compute_lda_model
+
+from pandas import json
+from pke import compute_document_frequency, compute_lda_model, Candidate
 from nltk.stem.snowball import SnowballStemmer
 import pke
 from nltk.tag.mapping import map_tag
@@ -7,6 +10,14 @@ import logging
 import spacy
 import numpy as np
 import time
+import glob
+import string
+import json
+import pandas as pd
+
+from ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature
+from DatabaseHandler import DatabaseHandler
+from KeyCluster import KeyCluster
 
 _SPACY_MODELS = {
     'en_vectors_web_lg',
@@ -19,6 +30,11 @@ def reformat_glove_model(gloveFile):
     Reformats a txt file into the word2vec file.
     The input file needs to be a txt file where each line consists of the word followed by its word embedding vector.
     To generate a scipy model out of this use:  python -m spacy init-model en output_dir --vectors-loc input_file
+
+    To reformat a gensim model use the following 2 lines:
+    trained_model = gensim.models.KeyedVectors.load_word2vec_format(input_model_path, binary=True)
+    trained_model.save_word2vec_format(output_model_path + ".txt", binary=False)
+    Then generate a scipy model with the above command.
 
     :param gloveFile:
     :return:
@@ -104,6 +120,151 @@ def compute_df(input_dir, output_file, extension="xml"):
                                language='en',                # language of files
                                normalization="stemming",    # use porter stemmer
                                stoplist=stoplist)
+
+
+def compute_global_cooccurrence(output_file, input_dir=None, dataset='Heise', extension='xml', **kwargs):
+    language = kwargs.get('language', 'en')
+    normalization = kwargs.get('normalization', 'stemming')
+    window = kwargs.get('window', 2)
+    n_grams = kwargs.get('n_grams', 1)
+    stoplist = kwargs.get('stoplist', None)
+    batch_size = kwargs.get('batch_size', 100)
+    num_documents = kwargs.get('num_documents', 0)
+    co_occurrences = dict()
+    word_counts = dict()
+    num_words_total = 0
+
+    if input_dir is None:
+        print("No input directory set, loading documents from the database for the %s dataset." % dataset)
+        db_handler = DatabaseHandler()
+        documents, _ = db_handler.load_documents_from_db(KeyCluster, **kwargs)
+
+        if num_documents == 0:
+            num_documents = db_handler.get_num_documents()
+
+        while(num_documents > 0):
+            for key, doc in documents.items():
+                logging.info('reading file ' + key)
+
+                word_counts, co_occurrences, num_words_total = _compute_document_cooccurrence(output_file, key, doc['document'],
+                                                                                              stoplist, n_grams, window,
+                                                                                              word_counts, co_occurrences,
+                                                                                              num_words_total)
+            num_documents -= batch_size
+            print("Done with batch.")
+    else:
+        for input_file in glob.glob(input_dir + "/*." + extension):
+            logging.info('reading file ' + input_file)
+            doc = pke.base.LoadFile()
+            doc.load_document(input=input_file, language=language, normalization=normalization)
+
+            word_counts, co_occurrences, num_words_total = _compute_document_cooccurrence(output_file, input_file, doc,
+                                                                                          stoplist, n_grams, window,
+                                                                                          word_counts, co_occurrences,
+                                                                                          num_words_total)
+
+    final_candidates = list(co_occurrences.keys())
+    # Create global cooccurrence matrix from the dictionary
+    cooccurrence_matrix = np.zeros((len(co_occurrences.keys()), len(co_occurrences.keys())))
+    for word1, co_occurrence_words in co_occurrences.items():
+        index1 = final_candidates.index(word1)
+        for word2, co_occurrence_count in co_occurrence_words.items():
+            index2 = final_candidates.index(word2)
+            cooccurrence_matrix[index1][index2] = co_occurrence_count
+
+    output = {
+        'keys': final_candidates,
+        'word_counts': word_counts,
+        'num_words_total': num_words_total,
+        'shape': cooccurrence_matrix.shape,
+        'cooccurrence_matrix': cooccurrence_matrix.tolist(),
+    }
+    print(num_words_total)
+    # print(cooccurrence_matrix.shape)
+    # print(cooccurrence_matrix)
+    # print(np.max(cooccurrence_matrix))
+    with open(output_file, 'w') as f:
+        json.dump(output, f)
+
+
+def _compute_document_cooccurrence(output_file, doc_name, doc, stoplist, n_grams, window, word_counts, co_occurrences, num_words_total):
+        logging.info('reading file ' + doc_name)
+
+        # Get all candidates without stopwords
+        if stoplist is None:
+            stoplist = doc.stoplist
+        doc.ngram_selection(n=n_grams)
+        doc.candidate_filtering(stoplist=list(string.punctuation) +
+                                             ['-lrb-', '-rrb-', '-lcb-', '-rcb-', '-lsb-', '-rsb-'] + stoplist)
+
+        # Get the global term frequency as well
+        for word, values in doc.candidates.items():
+            if word not in word_counts.keys():
+                word_counts[word] = len(values.offsets)
+            else:
+                word_counts[word] += len(values.offsets)
+        filtered_candidate_terms = list(doc.candidates.copy())
+
+        # Gell all candidates but keep stopwords
+        doc.candidates = defaultdict(Candidate)
+        doc.ngram_selection(n=1)
+        doc.candidate_filtering(stoplist=list(string.punctuation) +
+                                             ['-lrb-', '-rrb-', '-lcb-', '-rcb-', '-lsb-', '-rsb-'],
+                                    minimum_length=1, minimum_word_size=1, only_alphanum=False)
+        cooccurrence_terms = list(doc.candidates.copy())
+
+        # Calculate cooccurrence
+        for sentence in list(doc.sentences):
+            words = sentence.stems.copy()
+            num_words_total += len(sentence.words)
+
+            # Remove words/symbols that don't appear in the punctuation filtered tokens list
+            for index in sorted([i for i, x in enumerate(words) if x not in cooccurrence_terms], reverse=True):
+                words.pop(index)
+
+            # Calculate the cooccurrence within a set window size
+            for pos in range(len(words)):
+                start = pos - window
+                end = pos + window + 1
+
+                # Skip stopwords
+                if words[pos] not in filtered_candidate_terms:
+                    continue
+
+                if words[pos] not in co_occurrences.keys():
+                    co_occurrences[words[pos]] = dict()
+
+                if start < 0:
+                    start = 0
+
+                for word in words[start:pos] + words[pos + 1:end]:
+                    # Skip stopwords
+                    if word in filtered_candidate_terms:
+                        if word in co_occurrences[words[pos]].keys():
+                            co_occurrences[words[pos]][word] += 1
+                        else:
+                            co_occurrences[words[pos]][word] = 1
+
+        return word_counts, co_occurrences, num_words_total
+
+
+def load_global_cooccurrence_matrix(**kwargs):
+    global_cooccurrence_matrix_path = kwargs.get('global_cooccurrence_matrix', None)
+    cluster_feature_calculator = kwargs.get('cluster_feature_calculator', CooccurrenceClusterFeature)
+
+    if global_cooccurrence_matrix_path is None or cluster_feature_calculator not in [CooccurrenceClusterFeature, PPMIClusterFeature]:
+        print("No global cooccurrence matrix loaded.")
+
+    else:
+        with open(global_cooccurrence_matrix_path, 'r') as f:
+            global_cooccurrence_matrix = json.load(f)
+            global_cooccurrence_matrix['cooccurrence_matrix'] = np.array(
+                global_cooccurrence_matrix['cooccurrence_matrix'])
+
+        print("Finished loading global cooccurence matrix: %s" % global_cooccurrence_matrix_path)
+        kwargs['global_cooccurrence_matrix'] = global_cooccurrence_matrix
+
+    return kwargs
 
 
 def parse_frequent_word_list(path, min_word_count=10000, language='en', stemming=False):

@@ -10,44 +10,66 @@ from sklearn.metrics.pairwise import cosine_similarity
 class CooccurrenceClusterFeature:
     def __init__(self, **kwargs):
         self.window = kwargs.get('window', 2)
+        self.global_cooccurrence_matrix = kwargs.get('global_cooccurrence_matrix', None)
+
+    def _reduce_global_cooccurrence_matrix(self, filtered_candidate_terms):
+        # print("Using global cooccurrence matrix")
+        keys = self.global_cooccurrence_matrix['keys']
+        full_matrix = self.global_cooccurrence_matrix['cooccurrence_matrix']
+
+        reduced_cooccurrence_matrix = np.zeros((len(filtered_candidate_terms), len(filtered_candidate_terms)))
+        for local_word_index1, word1 in enumerate(filtered_candidate_terms):
+            global_word_index1 = keys.index(word1)
+            for local_word_index2, word2 in enumerate(filtered_candidate_terms):
+                if local_word_index2 < local_word_index1:
+                    continue
+                else:
+                    global_word_index2 = keys.index(word2)
+                    reduced_cooccurrence_matrix[local_word_index1][local_word_index2] = full_matrix[global_word_index1][global_word_index2]
+                    reduced_cooccurrence_matrix[local_word_index2][local_word_index1] = reduced_cooccurrence_matrix[local_word_index1][local_word_index2]
+
+        return reduced_cooccurrence_matrix
 
     def calc_cluster_features(self, context, filtered_candidate_terms):
         filtered_candidate_terms = list(filtered_candidate_terms)
-        # Get cooccurrence terms including stopwords but filter out punctuation and linebreaks
-        context.candidates = defaultdict(Candidate)
-        context.ngram_selection(n=1)
-        context.candidate_filtering(stoplist=list(string.punctuation) +
-                                          ['-lrb-', '-rrb-', '-lcb-', '-rcb-', '-lsb-', '-rsb-'],
-                                 minimum_length=1, minimum_word_size=1, only_alphanum=False)
-        cooccurrence_terms = list(context.candidates.copy())
-        
-        # Calculate cooccurrence_matrix
-        cooccurrence_matrix = np.zeros((len(filtered_candidate_terms), len(filtered_candidate_terms)))
-        for sentence in list(context.sentences):
-            words = sentence.stems.copy()
+        if self.global_cooccurrence_matrix is not None:
+            cooccurrence_matrix = self._reduce_global_cooccurrence_matrix(filtered_candidate_terms)
+        else:
+            # Get cooccurrence terms including stopwords but filter out punctuation and linebreaks
+            context.candidates = defaultdict(Candidate)
+            context.ngram_selection(n=1)
+            context.candidate_filtering(stoplist=list(string.punctuation) +
+                                              ['-lrb-', '-rrb-', '-lcb-', '-rcb-', '-lsb-', '-rsb-'],
+                                     minimum_length=1, minimum_word_size=1, only_alphanum=False)
+            cooccurrence_terms = list(context.candidates.copy())
 
-            # Remove words/symbols that don't appear in the punctuation filtered tokens list
-            for index in sorted([i for i, x in enumerate(words) if x not in cooccurrence_terms], reverse=True):
-                words.pop(index)
+            # Calculate cooccurrence_matrix
+            cooccurrence_matrix = np.zeros((len(filtered_candidate_terms), len(filtered_candidate_terms)))
+            for sentence in list(context.sentences):
+                words = sentence.stems.copy()
 
-            # Calculate the cooccurrence within a set window size
-            for pos in range(len(words)):
-                start = pos - self.window
-                end = pos + self.window + 1
+                # Remove words/symbols that don't appear in the punctuation filtered tokens list
+                for index in sorted([i for i, x in enumerate(words) if x not in cooccurrence_terms], reverse=True):
+                    words.pop(index)
 
-                # Skip stopwords
-                if words[pos] not in filtered_candidate_terms:
-                    continue
+                # Calculate the cooccurrence within a set window size
+                for pos in range(len(words)):
+                    start = pos - self.window
+                    end = pos + self.window + 1
 
-                word_index = filtered_candidate_terms.index(words[pos])
-
-                if start < 0:
-                    start = 0
-
-                for word in words[start:pos] + words[pos + 1:end]:
                     # Skip stopwords
-                    if word in filtered_candidate_terms:
-                        cooccurrence_matrix[word_index][filtered_candidate_terms.index(word)] += 1
+                    if words[pos] not in filtered_candidate_terms:
+                        continue
+
+                    word_index = filtered_candidate_terms.index(words[pos])
+
+                    if start < 0:
+                        start = 0
+
+                    for word in words[start:pos] + words[pos + 1:end]:
+                        # Skip stopwords
+                        if word in filtered_candidate_terms:
+                            cooccurrence_matrix[word_index][filtered_candidate_terms.index(word)] += 1
 
         return cooccurrence_matrix
 
@@ -57,21 +79,23 @@ class PPMIClusterFeature(CooccurrenceClusterFeature):
         super().__init__(**kwargs)
 
     def calc_cluster_features(self, context, filtered_candidate_terms):
-        cooccurrence_matrix = super().calc_cluster_features(context, filtered_candidate_terms)
+        filtered_candidate_terms = list(filtered_candidate_terms)
+        assert self.global_cooccurrence_matrix is not None, "PPMI needs a global cooccurrence matrix, please specify one under 'global_cooccurrence_matrix."
+
+        cooccurrence_matrix = super()._reduce_global_cooccurrence_matrix(filtered_candidate_terms)
+        word_counts = self.global_cooccurrence_matrix['word_counts']
+        num_words_total = self.global_cooccurrence_matrix['num_words_total']
 
         ppmi_matrix = np.zeros((len(filtered_candidate_terms), len(filtered_candidate_terms)))
         for index1, word1 in enumerate(filtered_candidate_terms):
-            word1_count = len(context.candidates[word1].offsets)
+            word1_count = word_counts[word1]
             for index2, word2 in enumerate(filtered_candidate_terms[index1:]):
                 index2 = index2 + index1
-                word2_count = len(context.candidates[word2].offsets)
+                word2_count = word_counts[word2]
                 cooccurrence_count = cooccurrence_matrix[index1][index2]
-                ppmi = max(np.log2(cooccurrence_count / (word1_count * word2_count)), 0)
-                # print(np.log2(cooccurrence_count / (word1_count * word2_count)), cooccurrence_count, word1_count, word2_count)
+                ppmi = max(np.log2(cooccurrence_count*num_words_total / (word1_count * word2_count)), 0)
                 ppmi_matrix[index1][index2] = ppmi
-
         ppmi_matrix = ppmi_matrix + np.triu(ppmi_matrix, k=1).T
-        # print(ppmi_matrix)
 
         return ppmi_matrix
 

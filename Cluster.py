@@ -122,6 +122,23 @@ class Clustering(metaclass=ABCMeta):
 
         return cluster_exemplar_terms
 
+    def get_random_exemplar_terms(self, num_clusters, terms):
+        terms = list(terms)
+        cluster_exemplar_terms = dict()
+
+        selected_exemplar_terms = np.random.choice(terms, size=num_clusters, replace=False)
+        for index in range(num_clusters):
+            cluster_exemplar_terms[index+1] = {
+                'sum': np.array([]),
+                'num_samples': 0,
+                'centroid': np.array([]),
+                'centroid_dist': 99999,
+                'centroid_index': terms.index(selected_exemplar_terms[index]),
+                'mean': 0,
+                'term': selected_exemplar_terms[index]
+            }
+
+        return cluster_exemplar_terms
 
 def get_N_HexCol(N=5):
     HSV_tuples = [(x * 1.0 / N*2, 1.0, 1.0) for x in range(N)]
@@ -161,7 +178,7 @@ class HierarchicalClustering(Clustering):
                     D_leaf_colors[labels[x]] = dflt_col
 
         # Create the actual dendogram with the calculated colors
-        fig, axes = plt.subplots(1, 1, figsize=(20, 10))
+        fig, axes = plt.subplots(1, 1, figsize=(20, 5))
         dendrogram(linked,
                    labels=labels,
                    orientation='top',
