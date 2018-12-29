@@ -23,6 +23,7 @@ class KeyphraseSelector:
     def select_candidate_keyphrases(self, sentences, regex='a*n+'):
         candidate_keyphrases = dict()
         for sentence_id, sentence in enumerate(list(sentences)):
+            sentence_id += 1
             pos_tags = ""
             # Create a simpler string representing the PoS Tags for the regex
             for pos in sentence.pos:
@@ -51,19 +52,18 @@ class KeyphraseSelector:
                 if keyphrase not in candidate_keyphrases:
                     candidate_keyphrases[keyphrase] = {
                         'sentence_id': sentence_id,
-                        'stemmed': stemmed_keyphrase_list,
-                        'unstemmed': unstemmed_keyphrase_list,
+                        'stems': stemmed_keyphrase_list,
+                        'words': unstemmed_keyphrase_list,
                         'pos': pos_keyphrase_list,
                         'char_offsets': offset_keyphrase_list,
                         'exemplar_terms_count': 0,
                         'weight': 0
                     }
-                    # print(candidate_keyphrases[keyphrase]['unstemmed'])
-                    # print(candidate_keyphrases[keyphrase]['pos'])
         return candidate_keyphrases
 
     def filter_candidate_keyphrases(self, candidate_keyphrases, candidate_terms, cluster_exemplar_terms):
         candidate_terms = list(candidate_terms)
+        unfiltered_candidate_keyphrases = candidate_keyphrases.copy()
 
         for keyphrase in list(candidate_keyphrases.keys()):
             for key, val in cluster_exemplar_terms.items():
@@ -72,11 +72,12 @@ class KeyphraseSelector:
                 if candidate_term in keyphrase.split(' '):
                     candidate_keyphrases[keyphrase]['exemplar_terms_count'] += 1
                     candidate_keyphrases[keyphrase]['weight'] = 1
+                    unfiltered_candidate_keyphrases[keyphrase].update(candidate_keyphrases[keyphrase])
 
             if candidate_keyphrases[keyphrase]['exemplar_terms_count'] == 0:
                 del candidate_keyphrases[keyphrase]
 
-        return candidate_keyphrases
+        return candidate_keyphrases, unfiltered_candidate_keyphrases
 
     def frequent_word_filtering(self, frequent_word_list, candidate_keyphrases):
         """

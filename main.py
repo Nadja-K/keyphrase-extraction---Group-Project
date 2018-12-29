@@ -29,12 +29,19 @@ from DatabaseHandler import DatabaseHandler
 pke.base.ISO_to_language['de'] = 'german'
 pke.LoadFile.normalize_pos_tags = custom_normalize_POS_tags
 
+
 class KeyphraseExtractor:
+    def get_param(self,  key, default_value, **params):
+        value = params.get(key, default_value)
+        params.update({key: value})
+
+        return value, params
+
     def extract_keyphrases(self, model, extractor, filename, **params):
-        language = params.get('language', 'en')
-        normalization = params.get('normalization', 'stemming')
-        frequency_file = params.get('frequency_file', None)
-        redundancy_removal = params.get('redundancy_removal', False)
+        language, params = self.get_param('language', 'en', **params)
+        normalization, params = self.get_param('normalization', 'stemming', **params)
+        frequency_file, params = self.get_param('frequency_file', None, **params)
+        redundancy_removal, params = self.get_param('redundancy_removal', False, **params)
 
         df = None
         if frequency_file is not None:
@@ -200,36 +207,36 @@ class KeyphraseExtractor:
             :param list frequent_word_list
             :param bool draw_graphs
             """
-            candidate_selector = params.get('candidate_selector', CandidateSelector())
+            candidate_selector, params = self.get_param('candidate_selector', CandidateSelector(), **params)
 
-            cluster_feature_calculator = params.get('cluster_feature_calculator', CooccurrenceClusterFeature)
+            cluster_feature_calculator, params = self.get_param('cluster_feature_calculator', CooccurrenceClusterFeature, **params)
             cluster_feature_calculator = cluster_feature_calculator(**params)
-            cluster_method = params.get('cluster_method', HierarchicalClustering)
+            cluster_method, params = self.get_param('cluster_method', HierarchicalClustering, **params)
             cluster_method = cluster_method(**params)
 
-            exemplar_terms_dist_func = params.get('exemplar_terms_dist_func', euclid_dist)
+            exemplar_terms_dist_func, params = self.get_param('exemplar_terms_dist_func', euclid_dist, **params)
 
-            keyphrase_selector = params.get('keyphrase_selector', KeyphraseSelector())
-            regex = params.get('regex', 'a*n+')
+            keyphrase_selector, params = self.get_param('keyphrase_selector', KeyphraseSelector(), **params)
+            regex, params = self.get_param('regex', 'a*n+', **params)
 
-            frequent_word_list = params.get('frequent_word_list', [])
+            frequent_word_list, params = self.get_param('frequent_word_list', [], **params)
             if len(frequent_word_list) == 0:
                 print("Frequent word list is empty. No frequent word filtering will be performed.")
 
             # Cluster Candidate Selection
-            extractor.candidate_selection(candidate_selector=candidate_selector, **params)
+            extractor.candidate_selection(**params)
 
             # Calculate number of Clusters (if the cluster algorithm needs this)
-            num_clusters = params.get('num_clusters', 0)
-            cluster_calc = params.get('cluster_calc', calc_num_cluster)
-            factor = params.get('factor', 2/3)
+            num_clusters, params = self.get_param('num_clusters', 0, **params)
+            cluster_calc, params = self.get_param('cluster_calc', calc_num_cluster, **params)
+            factor, params = self.get_param('factor', 2/3, **params)
             cluster_calc_args = {
                 'factor': factor,
                 'context': extractor,
                 'num_clusters': num_clusters
             }
             num_clusters = cluster_calc(**cluster_calc_args)
-            draw_graphs = params.get('draw_graphs', False)
+            draw_graphs, params = self.get_param('draw_graphs', False, **params)
 
             # Candidate Clustering, Exemplar Term Selection, Keyphrase Selection
             num_clusters = extractor.candidate_weighting(cluster_feature_calculator=cluster_feature_calculator,
@@ -241,11 +248,13 @@ class KeyphraseExtractor:
                                           regex=regex,
                                           frequent_word_list=frequent_word_list,
                                           draw_graphs=draw_graphs)
+            params['num_clusters'] = num_clusters
+            extractor.write_data_to_db(**params)
         else:
             extractor.candidate_selection()
             extractor.candidate_weighting()
 
-        n_keyphrases = params.get('n_keyphrases', len(extractor.candidates))
+        n_keyphrases, params = self.get_param('n_keyphrases', len(extractor.candidates), **params)
         return extractor.get_n_best(n=n_keyphrases, redundancy_removal=redundancy_removal, stemming=(normalization == 'stemming')), extractor
 
     def _evaluate_document(self, model, input_document, references, evaluators, print_document_scores=True, **kwargs):
@@ -394,7 +403,7 @@ class KeyphraseExtractor:
 
 
 kwargs = {
-    'language': 'de',
+    # 'language': 'de',
     'normalization': "stemming",
     # 'n_keyphrases': 10,
     # 'redundancy_removal': ,
@@ -418,19 +427,19 @@ kwargs = {
     # 'sigma': ,
 
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    'cluster_feature_calculator': PPMIClusterFeature,#WordEmbeddingsClusterFeature,
+    # 'cluster_feature_calculator': WordEmbeddingsClusterFeature,#PPMIClusterFeature,
     # 'word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
-    'global_cooccurrence_matrix': 'heise_out.cooccurrence',#'semeval_out.cooccurrence',# 'inspec_out.cooccurrence',
+    # 'global_cooccurrence_matrix': 'heise_out.cooccurrence',#'semeval_out.cooccurrence',# 'inspec_out.cooccurrence',
     # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
-    'regex': 'n{1,3}',
-    'num_clusters': 20,
+    # 'regex': 'n{1,3}',
+    # 'num_clusters': 20,
     # 'cluster_calc': ,
-    'factor': 1/10,
-    'frequent_word_list_file': 'data/frequent_word_lists/de_50k.txt',#'data/frequent_word_lists/en_50k.txt',#'data/frequent_word_lists/de_50k.txt',
+    # 'factor': 1/10,
+    'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',#'data/frequent_word_lists/en_50k.txt',#'data/frequent_word_lists/de_50k.txt',
     'min_word_count': 1000,
     # 'frequent_word_list': ['test'],
-    # 'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',#"/video2/keyphrase_extraction/word_embedding_models/german/devmount/la_vectors_devmount",#
+    # 'word_embedding_model_file': "/video2/keyphrase_extraction/word_embedding_models/german/devmount/la_vectors_devmount",#'../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',#
     # 'word_embedding_model':
     'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare], #stemmed_wordwise_phrase_compare,
 
@@ -537,8 +546,8 @@ def main():
     pke.LoadFile.normalize_POS_tags = custom_normalize_POS_tags
     pke.base.ISO_to_language['de'] = 'german'
 
-    # custom_testing()
-    heise_eval()
+    custom_testing()
+    # heise_eval()
 
 
 if __name__ == '__main__':

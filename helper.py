@@ -15,7 +15,7 @@ import string
 import json
 import pandas as pd
 
-from ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature
+from ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature, WordEmbeddingsClusterFeature
 from DatabaseHandler import DatabaseHandler
 from KeyCluster import KeyCluster
 
@@ -91,12 +91,18 @@ def _load_word_embedding_model(**kwargs):
         print("word_embedding_model was set, ignoring word_embedding_model_file")
         return kwargs
 
-    word_embedding_model_path = kwargs.get('word_embedding_model_file', 'en_vectors_web_lg')
-    kwargs['word_embedding_model'] = spacy.load(word_embedding_model_path)
-    if word_embedding_model_path in _SPACY_MODELS:
-        print("Finished loading spacy model: %s" % word_embedding_model_path)
+    if kwargs.get('cluster_feature_calculator', CooccurrenceClusterFeature) == WordEmbeddingsClusterFeature:
+        word_embedding_model_path = kwargs.get('word_embedding_model_file', 'en_vectors_web_lg')
+
+        kwargs['word_embedding_model_path'] = word_embedding_model_path
+        kwargs['word_embedding_model'] = spacy.load(word_embedding_model_path)
+        if word_embedding_model_path in _SPACY_MODELS:
+            print("Finished loading spacy model: %s" % word_embedding_model_path)
+        else:
+            print("Finished loading custom spacy model: %s" % word_embedding_model_path)
     else:
-        print("Finished loading custom spacy model: %s" % word_embedding_model_path)
+        kwargs['word_embedding_model'] = None
+        print("No word embedding model loaded.")
     return kwargs
 
 

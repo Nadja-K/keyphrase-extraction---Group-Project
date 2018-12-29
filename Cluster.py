@@ -138,7 +138,7 @@ class Clustering(metaclass=ABCMeta):
                 'term': selected_exemplar_terms[index]
             }
 
-        return cluster_exemplar_terms
+        return cluster_exemplar_terms, np.array(range(num_clusters))+1
 
 def get_N_HexCol(N=5):
     HSV_tuples = [(x * 1.0 / N*2, 1.0, 1.0) for x in range(N)]
