@@ -249,7 +249,6 @@ class KeyphraseExtractor:
                                           frequent_word_list=frequent_word_list,
                                           draw_graphs=draw_graphs)
             params['num_clusters'] = num_clusters
-            extractor.write_data_to_db(**params)
         else:
             extractor.candidate_selection()
             extractor.candidate_weighting()
@@ -285,6 +284,7 @@ class KeyphraseExtractor:
         # print(keyphrases)
         # print(reference)
 
+        doc_eval_data = {}
         if (len(keyphrases) > 0 and len(reference) > 0):
             for key, evaluator_data in evaluators.items():
                 evaluator = evaluator_data['evaluator']
@@ -294,6 +294,12 @@ class KeyphraseExtractor:
                     print("%s - Precision: %s, Recall: %s, F-Score: %s" % (
                     key, evaluator.precision, evaluator.recall, evaluator.f_measure))
 
+                doc_eval_data[key] = {
+                    'precision': evaluator.precision,
+                    'recall': evaluator.recall,
+                    'f-score': evaluator.f_measure
+                }
+
                 evaluators[key]['precision_total'] += evaluator.precision
                 evaluators[key]['recall_total'] += evaluator.recall
                 evaluators[key]['f_score_total'] += evaluator.f_measure
@@ -302,6 +308,14 @@ class KeyphraseExtractor:
                 "Skipping file %s for not enough reference keyphrases or found keyphrases. Found keyphrases: %s, Reference keyphrases: %s" % (
                 filename, len(keyphrases), len(reference)))
 
+            for key, evaluator_data in evaluators.items():
+                doc_eval_data[key] = {
+                    'precision': 0.0,
+                    'recall': 0.0,
+                    'f-score': 0.0
+                }
+
+        extractor.write_data_to_db(filename, doc_eval_data, **kwargs)
         return evaluators
 
     def calculate_model_f_score(self, model, input_data=None, references=None, print_document_scores=True, **kwargs):
@@ -403,7 +417,7 @@ class KeyphraseExtractor:
 
 
 kwargs = {
-    # 'language': 'de',
+    'language': 'de',
     'normalization': "stemming",
     # 'n_keyphrases': 10,
     # 'redundancy_removal': ,
@@ -427,19 +441,19 @@ kwargs = {
     # 'sigma': ,
 
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    # 'cluster_feature_calculator': WordEmbeddingsClusterFeature,#PPMIClusterFeature,
-    # 'word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
-    # 'global_cooccurrence_matrix': 'heise_out.cooccurrence',#'semeval_out.cooccurrence',# 'inspec_out.cooccurrence',
+    'cluster_feature_calculator': WordEmbeddingsClusterFeature,#PPMIClusterFeature,
+    'word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
+    # 'global_cooccurrence_matrix': 'inspec_out.cooccurrence',#'semeval_out.cooccurrence',# 'heise_out.cooccurrence',
     # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
-    # 'regex': 'n{1,3}',
-    # 'num_clusters': 20,
+    'regex': 'n{1,3}',
+    'num_clusters': 20,
     # 'cluster_calc': ,
-    # 'factor': 1/10,
-    'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',#'data/frequent_word_lists/en_50k.txt',#'data/frequent_word_lists/de_50k.txt',
+    'factor': 1/10,
+    'frequent_word_list_file': 'data/frequent_word_lists/de_50k.txt',#'data/frequent_word_lists/en_50k.txt',#'data/frequent_word_lists/de_50k.txt',
     'min_word_count': 1000,
     # 'frequent_word_list': ['test'],
-    # 'word_embedding_model_file': "/video2/keyphrase_extraction/word_embedding_models/german/devmount/la_vectors_devmount",#'../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',#
+    'word_embedding_model_file': "/video2/keyphrase_extraction/word_embedding_models/german/devmount/la_vectors_devmount",#'../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',#
     # 'word_embedding_model':
     'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare], #stemmed_wordwise_phrase_compare,
 
@@ -546,8 +560,8 @@ def main():
     pke.LoadFile.normalize_POS_tags = custom_normalize_POS_tags
     pke.base.ISO_to_language['de'] = 'german'
 
-    custom_testing()
-    # heise_eval()
+    # custom_testing()
+    heise_eval()
 
 
 if __name__ == '__main__':

@@ -1,6 +1,13 @@
+import inspect
+
+import spacy
 from pke.base import LoadFile
 from pke.data_structures import Candidate
 from collections import defaultdict
+
+from CandidateSelector import CandidateSelector
+from DatabaseHandler import DatabaseHandler
+from KeyphraseSelector import KeyphraseSelector
 
 
 class KeyCluster(LoadFile):
@@ -63,7 +70,7 @@ class KeyCluster(LoadFile):
                 'pos_patterns': self.candidate_terms[term].pos_patterns,
                 'offsets': self.candidate_terms[term].offsets,
                 'sentence_ids': self.candidate_terms[term].sentence_ids,
-                'cluster': cluster,
+                'cluster': int(cluster),
                 'exemplar_term': term == cluster_exemplar_terms[cluster]['term']
             }
 
@@ -71,10 +78,34 @@ class KeyCluster(LoadFile):
         for candidate in self.data_candidate_keyphrases:
             self.data_candidate_keyphrases[candidate]['selected'] = candidate in candidate_keyphrases
 
-    def write_data_to_db(self, **settings):
-        print(settings)
-        print(self.data_cluster_members)
-        print(self.data_candidate_keyphrases)
-        # FIXME write data into database
-        raise NotImplementedError
-        pass
+    def write_data_to_db(self, filename, doc_eval_data, **settings):
+        db_handler = DatabaseHandler()
+        reformatted_settings = settings.copy()
+
+        # Remove unneeded data
+        if 'frequent_word_list' in reformatted_settings.keys():
+            del(reformatted_settings['frequent_word_list'])
+        if 'word_embedding_model' in reformatted_settings.keys():
+            del(reformatted_settings['word_embedding_model'])
+        if 'global_cooccurrence_matrix' in reformatted_settings.keys():
+            del(reformatted_settings['global_cooccurrence_matrix'])
+
+        # Adjust the settings so that the information can be written to the database
+        comp_funcs = []
+        for comp_func in reformatted_settings['evaluator_compare_func']:
+            comp_funcs.append(comp_func.__name__)
+        reformatted_settings['evaluator_compare_func'] = comp_funcs
+
+        for key, val in reformatted_settings.items():
+            if callable(val) is True:
+                reformatted_settings[key] = val.__name__
+            elif isinstance(val, CandidateSelector) or isinstance(val, KeyphraseSelector):
+                reformatted_settings[key] = val.__class__.__name__
+
+        run = {
+            'eval_scores': doc_eval_data,
+            'settings': reformatted_settings,
+            'cluster_members': self.data_cluster_members,
+            'candidate_keyphrases': self.data_candidate_keyphrases
+        }
+        db_handler.write_document_run_to_db(filename, run)

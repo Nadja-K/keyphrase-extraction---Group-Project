@@ -19,6 +19,24 @@ class DatabaseHandler:
 
             return num_documents
 
+    def write_document_run_to_db(self, id, run):
+        id = int(id)
+        with r.connect(self._host, self._port, db='keyphrase_extraction') as conn:
+            cursor = r.table('document_runs').get_all(int(id)).run(conn)
+            cursor = list(cursor)
+            if len(cursor) == 0:
+                runs = [run]
+                data = {'id': id, 'runs': runs}
+                cursor = r.table('document_runs').insert(data).run(conn)
+                print("ID not found in table, creating new entry.")
+            else:
+                runs = cursor[0]['runs']
+                runs.append(run)
+                data = {'id': id, 'runs': runs}
+                cursor = r.table('document_runs').update(data).run(conn)
+                print("ID found in table, updating entry with new runs.")
+
+
     def load_documents_from_db(self, model, **kwargs):
         """
         Loads a set number of pre-parsed documents from the database and returns them as KeyCluster instances.
