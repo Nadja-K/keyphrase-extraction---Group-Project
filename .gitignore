@@ -2,3 +2,4 @@
 experiments/*
 *.csv
 *.txt
+!requirements.txt
