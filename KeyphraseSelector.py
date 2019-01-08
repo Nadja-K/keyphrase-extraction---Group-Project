@@ -22,8 +22,8 @@ _MAPPING = {
 class KeyphraseSelector:
     def select_candidate_keyphrases(self, sentences, regex='a*n+'):
         candidate_keyphrases = dict()
-        for sentence_id, sentence in enumerate(list(sentences)):
-            sentence_id += 1
+        for sentence in list(sentences):
+            sentence_id = int(sentence.meta['id'])
             pos_tags = ""
             # Create a simpler string representing the PoS Tags for the regex
             for pos in sentence.pos:

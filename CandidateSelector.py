@@ -19,6 +19,7 @@ def key_cluster_candidate_selector(context, **kwargs):
     context.candidate_filtering(stoplist=list(string.punctuation) +
                                          ['-lrb-', '-rrb-', '-lcb-', '-rcb-', '-lsb-', '-rsb-'] + stoplist)
     filtered_candidate_terms = context.candidates.copy()
+
     return filtered_candidate_terms
 
 

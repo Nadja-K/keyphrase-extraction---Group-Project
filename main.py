@@ -43,6 +43,8 @@ class KeyphraseExtractor:
         frequency_file, params = self.get_param('frequency_file', None, **params)
         redundancy_removal, params = self.get_param('redundancy_removal', False, **params)
 
+        params['model'] = model.__name__
+
         df = None
         if frequency_file is not None:
             df = pke.load_document_frequency_file(input_file=frequency_file)
@@ -254,7 +256,7 @@ class KeyphraseExtractor:
             extractor.candidate_weighting()
 
         n_keyphrases, params = self.get_param('n_keyphrases', len(extractor.candidates), **params)
-        return extractor.get_n_best(n=n_keyphrases, redundancy_removal=redundancy_removal, stemming=(normalization == 'stemming')), extractor
+        return extractor.get_n_best(n=n_keyphrases, redundancy_removal=redundancy_removal, stemming=(normalization == 'stemming')), extractor, params
 
     def _evaluate_document(self, model, input_document, references, evaluators, print_document_scores=True, **kwargs):
         language = kwargs.get('language', 'en')
@@ -276,7 +278,7 @@ class KeyphraseExtractor:
         reference = references[filename]
 
         print("Processing File: %s" % filename)
-        keyphrases, context = self.extract_keyphrases(model, extractor, filename, **kwargs)
+        keyphrases, context, adjusted_params = self.extract_keyphrases(model, extractor, filename, **kwargs)
         # Filter out reference keyphrases that don't appear in the original text
         if kwargs.get('filter_reference_keyphrases', False) is True:
             reference = self._filter_reference_keyphrases(reference, context, kwargs.get('normalization', 'stemming'))
@@ -315,7 +317,7 @@ class KeyphraseExtractor:
                     'f-score': 0.0
                 }
 
-        extractor.write_data_to_db(filename, doc_eval_data, **kwargs)
+        extractor.write_data_to_db(filename, doc_eval_data, **adjusted_params)
         return evaluators
 
     def calculate_model_f_score(self, model, input_data=None, references=None, print_document_scores=True, **kwargs):
@@ -441,13 +443,13 @@ kwargs = {
     # 'sigma': ,
 
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    'cluster_feature_calculator': WordEmbeddingsClusterFeature,#PPMIClusterFeature,
-    'word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
+    #'cluster_feature_calculator': WordEmbeddingsClusterFeature,#PPMIClusterFeature,
+    #'word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
     # 'global_cooccurrence_matrix': 'inspec_out.cooccurrence',#'semeval_out.cooccurrence',# 'heise_out.cooccurrence',
     # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
     'regex': 'n{1,3}',
-    'num_clusters': 20,
+    # 'num_clusters': 20,
     # 'cluster_calc': ,
     'factor': 1/10,
     'frequent_word_list_file': 'data/frequent_word_lists/de_50k.txt',#'data/frequent_word_lists/en_50k.txt',#'data/frequent_word_lists/de_50k.txt',
