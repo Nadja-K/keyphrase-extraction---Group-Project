@@ -1,0 +1,10 @@
+{
+  "rethinkDb" : {
+    "host": "cuda2",
+    "port": "28015",
+    "db": "keyphrase_extraction"
+  },
+  "api" : {
+    "page_size": 20
+  }
+}
