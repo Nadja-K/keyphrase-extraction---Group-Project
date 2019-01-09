@@ -5,12 +5,13 @@ def create_document_view_model(document):
         run_model = {}
 
         candidate_keyphrases = get_candidate_keyphrases_dict(run['candidate_keyphrases'])
+        cluster_members = get_cluster_members_dict(run['cluster_members'])
 
         for sentence in document['sentences']:
             section = run_model.get(sentence['section'], [])
             sentence_keyphrases = candidate_keyphrases[int(sentence['id'])]
 
-            sentence_model = create_sentence_model(sentence, sentence_keyphrases)
+            sentence_model = create_sentence_model(sentence, sentence_keyphrases, cluster_members)
             section.append(sentence_model)
             run_model[sentence['section']] = section
 
@@ -23,7 +24,7 @@ def create_document_view_model(document):
     return view_model
 
 
-def create_sentence_model(sentence, sentence_keyphrases):
+def create_sentence_model(sentence, sentence_keyphrases, cluster_members):
     sentence_model = []
     matched_keyphrases = []
 
@@ -36,12 +37,13 @@ def create_sentence_model(sentence, sentence_keyphrases):
             matching_keyphrase_end = matching_keyphrase['char_offsets'][-1][1]
 
             if matching_keyphrase_end not in matched_keyphrases:
-                keyphrase_model = create_keyphrase_model(matching_keyphrase, sentence, index)
+                keyphrase_model = create_keyphrase_model(matching_keyphrase, sentence, index, cluster_members)
                 sentence_model.append(keyphrase_model)
                 matched_keyphrases.append(matching_keyphrase_end)
 
         else:
-            word_model = create_word_model(word, sentence['POS'][index])
+            cluster_member = cluster_members.get(word, None)
+            word_model = create_word_model(word, sentence['POS'][index], cluster_member)
             sentence_model.append({'words': [word_model]})
 
     return sentence_model
@@ -71,16 +73,40 @@ def get_candidate_keyphrases_dict(candidate_keyphrases):
     return res
 
 
-def create_word_model(word, pos):
-    word_model = {
-        'word': word,
-        'pos': pos
-    }
+def get_cluster_members_dict(cluster_members):
+    res = {}
+
+    for _, cluster_member in cluster_members.items():
+        surface_forms = set(x[0] for x in cluster_member['surface_forms'])
+        for surface_form in surface_forms:
+            res.update({surface_form:
+                {
+                    'cluster': cluster_member['cluster'],
+                    'exemplar_term': cluster_member['exemplar_term']
+                }
+            })
+
+    return res
+
+
+def create_word_model(word, pos, cluster_member):
+    if cluster_member is None:
+        word_model = {
+            'word': word,
+            'pos': pos,
+        }
+    else:
+        word_model = {
+            'word': word,
+            'pos': pos,
+            'cluster': cluster_member['cluster'],
+            'exemplar_term': cluster_member['exemplar_term']
+        }
 
     return word_model
 
 
-def create_keyphrase_model(matching_keyphrase, sentence, index):
+def create_keyphrase_model(matching_keyphrase, sentence, index, cluster_members):
     keyphrase_model = {
         'properties': {
             'candidate_keyphrase': True,
@@ -91,7 +117,8 @@ def create_keyphrase_model(matching_keyphrase, sentence, index):
     words_model = []
 
     for i, word in enumerate(matching_keyphrase['words']):
-        words_model.append(create_word_model(word, sentence['POS'][index+i]))
+        cluster_member = cluster_members.get(word, None)
+        words_model.append(create_word_model(word, sentence['POS'][index+i], cluster_member))
 
     keyphrase_model['words'] = words_model
 
