@@ -15,6 +15,13 @@ import string
 import json
 import pandas as pd
 
+
+from sklearn.decomposition import PCA
+from matplotlib import pyplot as plt
+import matplotlib.lines as mlines
+import os
+import networkx as nx
+
 from ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature, WordEmbeddingsClusterFeature
 from DatabaseHandler import DatabaseHandler
 from KeyCluster import KeyCluster
@@ -322,3 +329,89 @@ def calc_num_cluster(**params):
         return 10
 
     return int(factor * len(context.candidate_terms))
+
+
+def _repel_labels(ax, x, y, labels, k=0.01):
+    G = nx.DiGraph()
+    data_nodes = []
+    init_pos = {}
+    for xi, yi, label in zip(x, y, labels):
+        data_str = 'data_{0}'.format(label)
+        G.add_node(data_str)
+        G.add_node(label)
+        G.add_edge(label, data_str)
+        data_nodes.append(data_str)
+        init_pos[data_str] = (xi, yi)
+        init_pos[label] = (xi, yi)
+
+    pos = nx.spring_layout(G, pos=init_pos, fixed=data_nodes, k=k)
+
+    # undo spring_layout's rescaling
+    pos_after = np.vstack([pos[d] for d in data_nodes])
+    pos_before = np.vstack([init_pos[d] for d in data_nodes])
+    scale, shift_x = np.polyfit(pos_after[:,0], pos_before[:,0], 1)
+    scale, shift_y = np.polyfit(pos_after[:,1], pos_before[:,1], 1)
+    shift = np.array([shift_x, shift_y])
+    for key, val in pos.items():
+        pos[key] = (val*scale) + shift
+
+    for label, data_str in G.edges():
+        ax.annotate(label,
+                    xy=pos[data_str], xycoords='data',
+                    xytext=pos[label], textcoords='data',
+                    arrowprops=dict(arrowstyle="->",
+                                    shrinkA=0, shrinkB=0,
+                                    connectionstyle="arc3",
+                                    color='red'), )
+    # expand limits
+    all_pos = np.vstack(pos.values())
+    x_span, y_span = np.ptp(all_pos, axis=0)
+    mins = np.min(all_pos-x_span*0.15, 0)
+    maxs = np.max(all_pos+y_span*0.15, 0)
+    ax.set_xlim([mins[0], maxs[0]])
+    ax.set_ylim([mins[1], maxs[1]])
+
+def _create_simple_embedding_visualization(data, labels, selected_candidates, doc, filename):
+    labels = list(labels)
+    data = np.append(data, doc, axis=0)
+    colors = ['c'] * (len(labels))
+    for i in selected_candidates:
+        colors[i] = 'g'
+
+    # Transform the data into lesser dimensions
+    n_components = 5
+    pca = PCA(n_components=n_components).fit(data)
+    pca_2d = pca.transform(data)
+    x = pca_2d[:, 3]
+    y = pca_2d[:, 4]
+
+    fig, ax = plt.subplots(figsize=(15, 10))
+    ax.scatter(x[:-1], y[:-1], marker='o', c=colors, s=90)
+    ax.scatter(x[-1], y[-1], marker='*', c='r', s=90)
+    # for i, txt in enumerate(labels):
+    #     ax.annotate(txt, (x[i], y[i]))
+
+    _repel_labels(ax, x, y, labels, k=0.2)
+
+    ax.set_xlim(-2, 2.5)
+    ax.set_ylim(-2, 2)
+    plt.xticks(np.arange(-2, 2.5, 0.5))
+    plt.yticks(np.arange(-2, 2, 0.5))
+
+    i = len(labels)
+    ax.annotate('Document', (x[i], y[i]))
+
+
+    markers = []
+    markers.append(mlines.Line2D([], [], color='r', marker='*', linestyle='None',
+                                 markersize=10, label='Document'))
+    markers.append(mlines.Line2D([], [], color='c', marker='o', linestyle='None',
+                                 markersize=10, label='Candidate Keyphrases'))
+    markers.append(mlines.Line2D([], [], color='g', marker='o', linestyle='None',
+                                 markersize=10, label='Selected Keyphrases'))
+    plt.legend(handles=markers, loc='upper left')
+
+    plt.title('Simplified Visualization', fontdict={'fontsize': 20})
+    plt.tight_layout()
+    fig.savefig(os.path.basename(filename).split('.')[0] + ".png")
+    plt.close()

@@ -3,6 +3,9 @@ from pke.data_structures import Document
 import pke
 from nltk.corpus import stopwords
 
+from CandidateSelector import CandidateSelector
+from KeyphraseSelector import KeyphraseSelector
+
 
 class DatabaseHandler:
     def __init__(self, host='localhost', port=28015):
@@ -18,6 +21,37 @@ class DatabaseHandler:
             num_documents = r.table('documents').count().run(conn)
 
             return num_documents
+
+    def write_data_to_db(self, filename, doc_eval_data, data_cluster_members=[], data_candidate_keyphrases=[], **settings):
+        reformatted_settings = settings.copy()
+
+        # Remove unneeded data
+        if 'frequent_word_list' in reformatted_settings.keys():
+            del(reformatted_settings['frequent_word_list'])
+        if 'word_embedding_model' in reformatted_settings.keys():
+            del(reformatted_settings['word_embedding_model'])
+        if 'global_cooccurrence_matrix' in reformatted_settings.keys():
+            del(reformatted_settings['global_cooccurrence_matrix'])
+
+        # Adjust the settings so that the information can be written to the database
+        comp_funcs = []
+        for comp_func in reformatted_settings['evaluator_compare_func']:
+            comp_funcs.append(comp_func.__name__)
+        reformatted_settings['evaluator_compare_func'] = comp_funcs
+
+        for key, val in reformatted_settings.items():
+            if callable(val) is True:
+                reformatted_settings[key] = val.__name__
+            elif isinstance(val, CandidateSelector) or isinstance(val, KeyphraseSelector):
+                reformatted_settings[key] = val.__class__.__name__
+
+        run = {
+            'eval_scores': doc_eval_data,
+            'settings': reformatted_settings,
+            'cluster_members': data_cluster_members,
+            'candidate_keyphrases': data_candidate_keyphrases
+        }
+        self.write_document_run_to_db(filename, run)
 
     def write_document_run_to_db(self, id, run):
         id = int(id)
@@ -58,7 +92,7 @@ class DatabaseHandler:
                 'id', r.table(table), ordered=True).zip().slice(self._current_index, self._current_index + batch_size).run(conn)
             # cursor = [r.table('pos_tags').get("2730613").merge(r.table('references').get("2730613")).run(conn)]
             for document in cursor:
-                print(document)
+                # print(document)
                 doc = Document.from_sentences(document['sentences'], **kwargs)
                 doc.is_corenlp_file = True
                 extractor = model()

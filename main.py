@@ -317,7 +317,12 @@ class KeyphraseExtractor:
                     'f-score': 0.0
                 }
 
-        extractor.write_data_to_db(filename, doc_eval_data, **adjusted_params)
+        database_handler = DatabaseHandler()
+        if model is KeyCluster:
+            database_handler.write_data_to_db(filename, doc_eval_data, data_cluster_members=extractor.data_cluster_members, data_candidate_keyphrases=extractor.data_candidate_keyphrases, **adjusted_params)
+        else:
+            unstemmed_keyphrases = extractor.get_n_best(n=adjusted_params.get('n_keyphrases', 10), redundancy_removal=True, stemming=False)
+            database_handler.write_data_to_db(filename, doc_eval_data, data_candidate_keyphrases=unstemmed_keyphrases, **adjusted_params)
         return evaluators
 
     def calculate_model_f_score(self, model, input_data=None, references=None, print_document_scores=True, **kwargs):
@@ -473,8 +478,8 @@ kwargs = {
 def heise_eval():
     extractor = KeyphraseExtractor()
     models = [
-        KeyCluster,
-        # TfIdf,
+        # KeyCluster,
+        TfIdf,
         # TopicRank,
         # SingleRank,
         # TextRank,
