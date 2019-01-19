@@ -152,7 +152,7 @@ def compute_db_document_frequency(output_file, dataset='Heise', extension='xml',
     db_handler = DatabaseHandler()
 
     if num_documents == 0:
-        num_documents = db_handler.get_num_documents()
+        num_documents = db_handler.get_num_documents_with_keyphrases(**kwargs)
 
     while (num_documents > 0):
         documents, _ = db_handler.load_documents_from_db(KeyCluster, **kwargs)

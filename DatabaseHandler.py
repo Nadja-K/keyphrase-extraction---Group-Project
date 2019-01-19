@@ -22,6 +22,13 @@ class DatabaseHandler:
 
             return num_documents
 
+    def get_num_documents_with_keyphrases(self, **kwargs):
+        reference_table = kwargs.get('reference_table', 'exact_filtered_stemmed')
+        with r.connect(self._host, self._port, db='keyphrase_extraction') as conn:
+            num_documents = r.table('references').has_fields(reference_table).count().run(conn)
+
+            return num_documents
+
     def write_data_to_db(self, filename, doc_eval_data, data_cluster_members=[], data_candidate_keyphrases=[], **settings):
         reformatted_settings = settings.copy()
 
