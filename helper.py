@@ -20,6 +20,7 @@ from sklearn.decomposition import PCA
 from matplotlib import pyplot as plt
 import matplotlib.lines as mlines
 import os
+import gzip
 import networkx as nx
 
 from ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature, WordEmbeddingsClusterFeature
@@ -135,6 +136,56 @@ def compute_df(input_dir, output_file, extension="xml"):
                                stoplist=stoplist)
 
 
+def compute_db_document_frequency(output_file, dataset='Heise', extension='xml', delimiter='\t', **kwargs):
+    language = kwargs.get('language', 'en')
+    normalization = kwargs.get('normalization', 'stemming')
+    window = kwargs.get('window', 2)
+    n_grams = kwargs.get('n_grams', 3)
+    stoplist = kwargs.get('stoplist', None)
+    batch_size = kwargs.get('batch_size', 100)
+    num_documents = kwargs.get('num_documents', 0)
+    frequencies = defaultdict(set)
+
+    document_names = []
+
+    print("Loading documents from the database for the %s dataset." % dataset)
+    db_handler = DatabaseHandler()
+
+    if num_documents == 0:
+        num_documents = db_handler.get_num_documents()
+
+    while (num_documents > 0):
+        documents, _ = db_handler.load_documents_from_db(KeyCluster, **kwargs)
+        for key, doc in documents.items():
+            document_names.append(key)
+
+            logging.info('reading file ' + key)
+
+            doc['document'].ngram_selection(n=n_grams)
+            doc['document'].candidate_filtering(stoplist=stoplist)
+            for lexical_form in doc['document'].candidates:
+                frequencies[lexical_form].add(key)
+
+        num_documents -= batch_size
+        print("Done with batch.")
+
+    print(len(document_names))
+    print(len(set(document_names)))
+    num_documents = len(document_names)
+
+    if os.path.dirname(output_file):
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+    with gzip.open(output_file, 'wb') as f:
+        # add the number of documents as special token
+        first_line = '--NB_DOC--' + delimiter + str(num_documents)
+        f.write(first_line.encode('utf-8') + b'\n')
+
+        for ngram in frequencies:
+            line = ngram + delimiter + str(len(frequencies[ngram]))
+            f.write(line.encode('utf-8') + b'\n')
+
+
 def compute_global_cooccurrence(output_file, input_dir=None, dataset='Heise', extension='xml', **kwargs):
     language = kwargs.get('language', 'en')
     normalization = kwargs.get('normalization', 'stemming')
@@ -150,12 +201,12 @@ def compute_global_cooccurrence(output_file, input_dir=None, dataset='Heise', ex
     if input_dir is None:
         print("No input directory set, loading documents from the database for the %s dataset." % dataset)
         db_handler = DatabaseHandler()
-        documents, _ = db_handler.load_documents_from_db(KeyCluster, **kwargs)
 
         if num_documents == 0:
             num_documents = db_handler.get_num_documents()
 
         while(num_documents > 0):
+            documents, _ = db_handler.load_documents_from_db(KeyCluster, **kwargs)
             for key, doc in documents.items():
                 logging.info('reading file ' + key)
 

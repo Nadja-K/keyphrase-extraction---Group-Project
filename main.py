@@ -23,7 +23,7 @@ from KeyphraseSelector import KeyphraseSelector
 from evaluation import Evaluator, stemmed_wordwise_phrase_compare, stemmed_compare, stemmed_word_compare
 from Cluster import euclid_dist
 from helper import compute_df, calc_num_cluster, custom_normalize_POS_tags, _load_word_embedding_model, \
-    _load_frequent_word_list, compute_global_cooccurrence, load_global_cooccurrence_matrix
+    _load_frequent_word_list, compute_global_cooccurrence, load_global_cooccurrence_matrix, compute_db_document_frequency
 from DatabaseHandler import DatabaseHandler
 
 pke.base.ISO_to_language['de'] = 'german'
@@ -256,6 +256,12 @@ class KeyphraseExtractor:
             extractor.candidate_weighting()
 
         n_keyphrases, params = self.get_param('n_keyphrases', len(extractor.candidates), **params)
+        # Limit the number of keyphrases to be extracted based on the amount of candidates and a factor, KeyCluster
+        # has this already implemented through the Clustering, so this model is excluded here.
+        if model not in [KeyCluster]:
+            factor, params = self.get_param('factor', 1, **params)
+            n_keyphrases = int(n_keyphrases * factor)
+
         return extractor.get_n_best(n=n_keyphrases, redundancy_removal=redundancy_removal, stemming=(normalization == 'stemming')), extractor, params
 
     def _evaluate_document(self, model, input_document, references, evaluators, print_document_scores=True, **kwargs):
@@ -282,9 +288,6 @@ class KeyphraseExtractor:
         # Filter out reference keyphrases that don't appear in the original text
         if kwargs.get('filter_reference_keyphrases', False) is True:
             reference = self._filter_reference_keyphrases(reference, context, kwargs.get('normalization', 'stemming'))
-
-        # print(keyphrases)
-        # print(reference)
 
         doc_eval_data = {}
         if (len(keyphrases) > 0 and len(reference) > 0):
@@ -317,12 +320,13 @@ class KeyphraseExtractor:
                     'f-score': 0.0
                 }
 
-        database_handler = DatabaseHandler()
-        if model is KeyCluster:
-            database_handler.write_data_to_db(filename, doc_eval_data, data_cluster_members=extractor.data_cluster_members, data_candidate_keyphrases=extractor.data_candidate_keyphrases, **adjusted_params)
-        else:
-            unstemmed_keyphrases = extractor.get_n_best(n=adjusted_params.get('n_keyphrases', 10), redundancy_removal=True, stemming=False)
-            database_handler.write_data_to_db(filename, doc_eval_data, data_candidate_keyphrases=unstemmed_keyphrases, **adjusted_params)
+        if adjusted_params.get('write_to_db', False) is True:
+            database_handler = DatabaseHandler()
+            if model is KeyCluster:
+                database_handler.write_data_to_db(filename, doc_eval_data, data_cluster_members=extractor.data_cluster_members, data_candidate_keyphrases=extractor.data_candidate_keyphrases, **adjusted_params)
+            else:
+                unstemmed_keyphrases = extractor.get_n_best(n=adjusted_params.get('n_keyphrases', 10), redundancy_removal=True, stemming=False)
+                database_handler.write_data_to_db(filename, doc_eval_data, data_candidate_keyphrases=unstemmed_keyphrases, **adjusted_params)
         return evaluators
 
     def calculate_model_f_score(self, model, input_data=None, references=None, print_document_scores=True, **kwargs):
@@ -430,8 +434,8 @@ kwargs = {
     # 'redundancy_removal': ,
     # 'n_grams': 1,
     # 'stoplist': ,
-    # 'frequency_file': '../ake-datasets/datasets/Inspec/Inspec_df_counts.tsv.gz',
-    'window': 2,
+    'frequency_file': 'data/heise_df_counts.tsv.gz',#'../ake-datasets/datasets/SemEval-2010/df_counts.tsv.gz',
+    # 'window': 2,
     # 'pos': ,
     # 'top_percent': 1.0,
     # 'normalized': ,
@@ -448,30 +452,31 @@ kwargs = {
     # 'sigma': ,
 
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    #'cluster_feature_calculator': WordEmbeddingsClusterFeature,#PPMIClusterFeature,
+    # 'cluster_feature_calculator': WordEmbeddingsClusterFeature,#PPMIClusterFeature,
     #'word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
-    # 'global_cooccurrence_matrix': 'inspec_out.cooccurrence',#'semeval_out.cooccurrence',# 'heise_out.cooccurrence',
+    # 'global_cooccurrence_matrix': 'heise_out.cooccurrence',#'inspec_out.cooccurrence',#'semeval_out.cooccurrence',# 'heise_out.cooccurrence',
     # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
-    'regex': 'n{1,3}',
+    # 'regex': 'n{1,3}',
     # 'num_clusters': 20,
     # 'cluster_calc': ,
-    'factor': 1/10,
+    # 'factor': 1/10,
     'frequent_word_list_file': 'data/frequent_word_lists/de_50k.txt',#'data/frequent_word_lists/en_50k.txt',#'data/frequent_word_lists/de_50k.txt',
     'min_word_count': 1000,
     # 'frequent_word_list': ['test'],
-    'word_embedding_model_file': "/video2/keyphrase_extraction/word_embedding_models/german/devmount/la_vectors_devmount",#'../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',#
+    # 'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',#"/video2/keyphrase_extraction/word_embedding_models/german/devmount/la_vectors_devmount",#
     # 'word_embedding_model':
     'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare], #stemmed_wordwise_phrase_compare,
 
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
     # 'draw_graphs': True,
-    # 'print_document_scores': False,
+    'print_document_scores': False,
 
-    'num_documents': 200,
-    'batch_size': 100,
+    # 'num_documents': 1000,
+    'batch_size': 1000,
     'reference_table': 'stemmed_filtered_stemmed',
-    # 'table': 'pos_tags'
+    # 'table': 'pos_tags',
+    'write_to_db': False
 }
 
 
@@ -479,12 +484,15 @@ def heise_eval():
     extractor = KeyphraseExtractor()
     models = [
         # KeyCluster,
-        TfIdf,
+        # TfIdf,
         # TopicRank,
         # SingleRank,
         # TextRank,
         # KPMiner
     ]
+
+    print("Computing the document frequency file.")
+    compute_db_document_frequency("test_df_counts.tsv.gz", **kwargs)
 
     # print("Computing the global cooccurrence matrix.")
     # compute_global_cooccurrence("heise_out.cooccurrence", **kwargs)
@@ -514,18 +522,18 @@ def custom_testing():
     # compute_global_cooccurrence(test_folder, "semeval_out.cooccurrence", **kwargs)
 
     # Inspec
-    train_folder = "../ake-datasets/datasets/Inspec/train"
-    test_folder = "../ake-datasets/datasets/Inspec/dev"
-    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+    # train_folder = "../ake-datasets/datasets/Inspec/train"
+    # test_folder = "../ake-datasets/datasets/Inspec/dev"
+    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
 
     # Only needs to be done once for a dataset
     # print("Computing the global cooccurrence matrix.")
     # compute_global_cooccurrence("inspec_out.cooccurrence", input_dir=test_folder, **kwargs)
 
     # DUC-2001
-    # train_folder = "../ake-datasets/datasets/DUC-2001/train"
-    # test_folder = "../ake-datasets/datasets/DUC-2001/test"
-    # reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
+    train_folder = "../ake-datasets/datasets/DUC-2001/train"
+    test_folder = "../ake-datasets/datasets/DUC-2001/test"
+    reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
 
     reference_stemmed = pke.utils.load_references(reference_stemmed_file)
     extractor = KeyphraseExtractor()
@@ -545,6 +553,7 @@ def custom_testing():
                 output_name = '/'.join(train_folder.split('/')[:-1]) + '/df_counts.tsv.gz'
                 compute_df(train_folder, output_name, extension="xml")
                 kwargs['frequency_file'] = output_name
+                print("Frequency file calculated for current dataset.")
 
         print("Computing the F-Score for the Inspec Dataset with {}".format(m))
         evaluators = extractor.calculate_model_f_score(m, input_data=test_folder, references=reference_stemmed, **kwargs)
@@ -570,6 +579,61 @@ def main():
     # custom_testing()
     heise_eval()
 
+    # some dataset statistic collection, can be removed
+    # # train_folder = "../ake-datasets/datasets/DUC-2001/train"
+    # # test_folder = "../ake-datasets/datasets/DUC-2001/test"
+    # # reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
+    # #
+    # # train_folder = "../ake-datasets/datasets/Inspec/train"
+    # # test_folder = "../ake-datasets/datasets/Inspec/dev"
+    # # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+    #
+    # train_folder = "../ake-datasets/datasets/SemEval-2010/train"
+    # test_folder = "../ake-datasets/datasets/SemEval-2010/test"
+    # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
+    #
+    # keyphrase_extractor = KeyphraseExtractor()
+    # reference_stemmed = pke.utils.load_references(reference_stemmed_file)
+    #
+    # unique_keyphrases = set()
+    # num_keyphrases_found = 0
+    # num_keyphrases_not_found = 0
+    # docs = 0
+    # keyphrase_length = 0
+    # for file in glob.glob(test_folder + '/*'):
+    #     docs += 1
+    #     filename = os.path.splitext(os.path.basename(file))[0]
+    #     extractor = KeyCluster()
+    #     extractor.load_document(file, language='en', normalization=False)
+    #     reference = reference_stemmed[filename]
+    #     unique_keyphrases.update(reference)
+    #     # print(reference)
+    #     for keyphrase in reference:
+    #         keyphrase_length += len(keyphrase.split(' '))
+    #         tmp = False
+    #         if keyphrase == 'control stream error probabl':
+    #             print(sent.stems)
+    #         for sent in extractor.sentences:
+    #             # if keyphrase_extractor._is_exact_match(keyphrase, ' '.join(sent.stems)):
+    #             if keyphrase in ' '.join(sent.stems):
+    #                 num_keyphrases_found +=1
+    #                 tmp = True
+    #                 break
+    #         if tmp is False:
+    #             num_keyphrases_not_found += 1
+    #             print(keyphrase, file)
+    # print(num_keyphrases_found)
+    # print(num_keyphrases_not_found)
+    # print(len(unique_keyphrases))
+    # print(docs)
+    # x = 0
+    # for reference in reference_stemmed.values():
+    #     x += len(reference)
+    # print(x)
+    # keyphrase_length = keyphrase_length / x
+    # print(keyphrase_length)
+    #     # for sent in extractor.sentences:
+    #     #     keyphrase_extractor._is_exact_match()
 
 if __name__ == '__main__':
     main()

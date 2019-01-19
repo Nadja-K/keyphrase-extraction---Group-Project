@@ -88,11 +88,11 @@ class DatabaseHandler:
         extracted_documents = dict()
         extracted_documents_references = dict()
         with r.connect(self._host, self._port, db='keyphrase_extraction') as conn:
-            cursor = r.table('references').order_by(index=r.desc('id')).has_fields(reference_table).pluck(reference_table, 'id').eq_join(
-                'id', r.table(table), ordered=True).zip().slice(self._current_index, self._current_index + batch_size).run(conn)
+            cursor = r.table('references').order_by(index=r.desc('id')).has_fields(reference_table).pluck(
+                reference_table, 'id').slice(self._current_index, self._current_index + batch_size).eq_join(
+                'id', r.table(table), ordered=True).zip().run(conn)
             # cursor = [r.table('pos_tags').get("2730613").merge(r.table('references').get("2730613")).run(conn)]
             for document in cursor:
-                # print(document)
                 doc = Document.from_sentences(document['sentences'], **kwargs)
                 doc.is_corenlp_file = True
                 extractor = model()
