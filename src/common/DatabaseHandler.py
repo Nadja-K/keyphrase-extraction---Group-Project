@@ -3,8 +3,8 @@ from pke.data_structures import Document
 import pke
 from nltk.corpus import stopwords
 
-from CandidateSelector import CandidateSelector
-from KeyphraseSelector import KeyphraseSelector
+from common.CandidateSelector import CandidateSelector
+from common.KeyphraseSelector import KeyphraseSelector
 
 
 class DatabaseHandler:

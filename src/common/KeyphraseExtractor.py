@@ -1,30 +1,27 @@
-import numpy as np
-
 import pke
 from nltk.corpus import stopwords
-from pke import compute_document_frequency, compute_lda_model, Document
 from string import punctuation
 import glob
 import os
 from pke.unsupervised import (
     TopicRank, SingleRank,
     MultipartiteRank, PositionRank,
-    TopicalPageRank, ExpandRank,
-    TextRank, TfIdf, KPMiner,
-    YAKE, FirstPhrases
+    TopicalPageRank, TextRank, TfIdf, KPMiner,
+    YAKE
 )
-from KeyCluster import KeyCluster
-from EmbedRank import EmbedRank
+from methods.KeyCluster import KeyCluster
+from methods.EmbedRank import EmbedRank
 
-from ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature, WordEmbeddingsClusterFeature
-from CandidateSelector import CandidateSelector, embed_rank_candidate_selector
-from Cluster import HierarchicalClustering, SpectralClustering
-from KeyphraseSelector import KeyphraseSelector
-from evaluation import Evaluator, stemmed_wordwise_phrase_compare, stemmed_compare, stemmed_word_compare
-from Cluster import euclid_dist
-from helper import compute_df, calc_num_cluster, custom_normalize_POS_tags, _load_word_embedding_model, \
-    _load_frequent_word_list, compute_global_cooccurrence, load_global_cooccurrence_matrix, compute_db_document_frequency
-from DatabaseHandler import DatabaseHandler
+from common.ClusterFeatureCalculator import CooccurrenceClusterFeature
+from common.CandidateSelector import CandidateSelector, embed_rank_candidate_selector
+from common.Cluster import HierarchicalClustering
+from common.KeyphraseSelector import KeyphraseSelector
+from common.Cluster import euclid_dist
+from common.helper import calc_num_cluster, _load_word_embedding_model, \
+    _load_frequent_word_list, load_global_cooccurrence_matrix
+from common.DatabaseHandler import DatabaseHandler
+
+from eval.evaluation import Evaluator, stemmed_compare
 
 
 class KeyphraseExtractor:

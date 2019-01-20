@@ -13,7 +13,7 @@ from sklearn.decomposition import PCA
 import time
 import logging
 
-from ClusterFeatureCalculator import CooccurrenceClusterFeature, WordEmbeddingsClusterFeature, PPMIClusterFeature
+from common.ClusterFeatureCalculator import CooccurrenceClusterFeature, WordEmbeddingsClusterFeature, PPMIClusterFeature
 
 
 def euclid_dist(cluster_features, mean_cluster_features):

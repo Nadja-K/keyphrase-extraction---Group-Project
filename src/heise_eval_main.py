@@ -1,24 +1,12 @@
 import pke
-from pke.unsupervised import (
-    TopicRank, SingleRank,
-    MultipartiteRank, PositionRank,
-    TopicalPageRank, ExpandRank,
-    TextRank, TfIdf, KPMiner,
-    YAKE, FirstPhrases
-)
-from KeyCluster import KeyCluster
-from EmbedRank import EmbedRank
+from methods.KeyCluster import KeyCluster
 
-from KeyphraseExtractor import KeyphraseExtractor
+from common.KeyphraseExtractor import KeyphraseExtractor
 
-from ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature, WordEmbeddingsClusterFeature
-from CandidateSelector import CandidateSelector, embed_rank_candidate_selector
-from Cluster import HierarchicalClustering, SpectralClustering
-from KeyphraseSelector import KeyphraseSelector
-from evaluation import Evaluator, stemmed_wordwise_phrase_compare, stemmed_compare, stemmed_word_compare
-from Cluster import euclid_dist
+from common.ClusterFeatureCalculator import WordEmbeddingsClusterFeature
+from eval.evaluation import stemmed_wordwise_phrase_compare, stemmed_compare
 
-from helper import custom_normalize_POS_tags
+from common.helper import custom_normalize_POS_tags
 
 
 pke.base.ISO_to_language['de'] = 'german'

@@ -13,8 +13,6 @@ import time
 import glob
 import string
 import json
-import pandas as pd
-
 
 from sklearn.decomposition import PCA
 from matplotlib import pyplot as plt
@@ -23,9 +21,9 @@ import os
 import gzip
 import networkx as nx
 
-from ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature, WordEmbeddingsClusterFeature
-from DatabaseHandler import DatabaseHandler
-from KeyCluster import KeyCluster
+from common.ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature, WordEmbeddingsClusterFeature
+from common.DatabaseHandler import DatabaseHandler
+from methods.KeyCluster import KeyCluster
 
 _SPACY_MODELS = {
     'en_vectors_web_lg',

@@ -1,12 +1,11 @@
-from KeyCluster import KeyCluster
-from KeyphraseExtractor import KeyphraseExtractor
+from methods.KeyCluster import KeyCluster
+from common.KeyphraseExtractor import KeyphraseExtractor
 import pke
-from helper import custom_normalize_POS_tags
-from KeyphraseExtractor import kwargs
-from ClusterFeatureCalculator import CooccurrenceClusterFeature, WordEmbeddingsClusterFeature
-from Cluster import HierarchicalClustering, SpectralClustering
+from common.helper import custom_normalize_POS_tags
+from common.KeyphraseExtractor import kwargs
+from common.ClusterFeatureCalculator import CooccurrenceClusterFeature, WordEmbeddingsClusterFeature
+from common.Cluster import HierarchicalClustering
 import numpy as np
-from evaluation import stemmed_wordwise_phrase_compare, stemmed_compare
 import csv
 import itertools
 

@@ -7,6 +7,7 @@ import spacy
 from pke.data_structures import Candidate
 from sklearn.metrics.pairwise import cosine_similarity
 
+
 class CooccurrenceClusterFeature:
     def __init__(self, **kwargs):
         self.window = kwargs.get('window', 2)

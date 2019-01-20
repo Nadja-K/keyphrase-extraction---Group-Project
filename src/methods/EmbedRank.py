@@ -1,13 +1,14 @@
 import inspect
 
 import spacy
+import sent2vec
 from pke.base import LoadFile
 from pke.data_structures import Candidate
 from collections import defaultdict
 
-from CandidateSelector import CandidateSelector
-from DatabaseHandler import DatabaseHandler
-from KeyphraseSelector import KeyphraseSelector
+from common.CandidateSelector import CandidateSelector
+from common.DatabaseHandler import DatabaseHandler
+from common.KeyphraseSelector import KeyphraseSelector
 
 
 class EmbedRank(LoadFile):
@@ -15,6 +16,8 @@ class EmbedRank(LoadFile):
         super(EmbedRank, self).__init__()
         self.candidate_terms = None
         self.cluster_features = None
+        self.sent2vec_model = sent2vec.Sent2vecModel()
+        # self.sent2vec_model.load_model(fasttext_model)
 
     def candidate_selection(self, candidate_selector, **kwargs):
         # Select candidate Keyphrases based on PoS-Tags with a regex
