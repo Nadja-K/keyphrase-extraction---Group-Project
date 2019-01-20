@@ -169,8 +169,6 @@ def compute_db_document_frequency(output_file, dataset='Heise', extension='xml',
         num_documents -= batch_size
         print("Done with batch.")
 
-    print(len(document_names))
-    print(len(set(document_names)))
     num_documents = len(document_names)
 
     if os.path.dirname(output_file):

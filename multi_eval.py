@@ -1,8 +1,8 @@
 from KeyCluster import KeyCluster
-from main import KeyphraseExtractor
+from KeyphraseExtractor import KeyphraseExtractor
 import pke
 from helper import custom_normalize_POS_tags
-from main import kwargs
+from KeyphraseExtractor import kwargs
 from ClusterFeatureCalculator import CooccurrenceClusterFeature, WordEmbeddingsClusterFeature
 from Cluster import HierarchicalClustering, SpectralClustering
 import numpy as np
