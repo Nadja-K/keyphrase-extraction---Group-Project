@@ -1,4 +1,6 @@
 import pke
+
+from methods.EmbedRank import EmbedRank
 from methods.KeyCluster import KeyCluster
 
 from common.KeyphraseExtractor import KeyphraseExtractor
@@ -16,7 +18,7 @@ pke.LoadFile.normalize_pos_tags = custom_normalize_POS_tags
 kwargs = {
     'language': 'de',
     'normalization': "stemming",
-    # 'n_keyphrases': 10,
+    'n_keyphrases': 10,
     # 'redundancy_removal': ,
     # 'n_grams': 1,
     # 'stoplist': ,
@@ -37,13 +39,14 @@ kwargs = {
     # 'cutoff': ,
     # 'sigma': ,
 
+    ## KeyCluster
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
     'cluster_feature_calculator': WordEmbeddingsClusterFeature,#PPMIClusterFeature,
     # word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
     # 'global_cooccurrence_matrix': 'heise_out.cooccurrence',#'inspec_out.cooccurrence',#'semeval_out.cooccurrence',
     # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
-    'regex': 'n{1,3}',
+    # 'regex': 'n{1,3}',
     # 'num_clusters': 20,
     # 'cluster_calc': ,
     'factor': 1/10,
@@ -53,6 +56,9 @@ kwargs = {
     'word_embedding_model_file': "/video2/keyphrase_extraction/word_embedding_models/german/devmount/la_vectors_devmount",
     # 'word_embedding_model':
     'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare],
+
+    ## EmbedRank
+    'sent2vec_model': '../word_embedding_models/german/sent2vec/de_model.bin',
 
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
     # 'draw_graphs': True,
@@ -69,7 +75,8 @@ kwargs = {
 def heise_eval():
     extractor = KeyphraseExtractor()
     models = [
-        KeyCluster,
+        # KeyCluster,
+        EmbedRank,
         # TfIdf,
         # TopicRank,
         # SingleRank,

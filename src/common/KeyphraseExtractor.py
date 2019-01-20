@@ -9,6 +9,8 @@ from pke.unsupervised import (
     TopicalPageRank, TextRank, TfIdf, KPMiner,
     YAKE
 )
+
+from common.EmbeddingDistributor import EmbeddingDistributor
 from methods.KeyCluster import KeyCluster
 from methods.EmbedRank import EmbedRank
 
@@ -246,15 +248,21 @@ class KeyphraseExtractor:
                                           draw_graphs=draw_graphs)
             params['num_clusters'] = num_clusters
         elif model in [EmbedRank]:
+            """
+            :param regex
+            :param candidate_selector
+            :param sent2vec_model
+            """
             # Initialize standard parameters for EmbedRank
             regex, params = self.get_param('regex', 'a*n+', **params)
             candidate_selector, params = self.get_param('candidate_selector', CandidateSelector(embed_rank_candidate_selector), **params)
+            sent2vec_model = params.get('sent2vec_model')
 
-            # Cluster Candidate Selection
+            # Candidate Selection
             extractor.candidate_selection(**params)
 
-            # Candidate Clustering, Exemplar Term Selection, Keyphrase Selection
-            # num_clusters = extractor.candidate_weighting()
+            # Keyphrase Selection
+            extractor.candidate_weighting(sent2vec_model=sent2vec_model)
         else:
             extractor.candidate_selection()
             extractor.candidate_weighting()
@@ -354,6 +362,9 @@ class KeyphraseExtractor:
 
         # Load the global cooccurrence matrix if specified
         kwargs = load_global_cooccurrence_matrix(**kwargs)
+
+        # Load the sent2vec model
+        kwargs.update({'sent2vec_model': EmbeddingDistributor(kwargs.get('sent2vec_model', '../word_embedding_models/german/sent2vec/de_model.bin'))})
 
         if input_data is None or references is None:
             db_handler = DatabaseHandler()

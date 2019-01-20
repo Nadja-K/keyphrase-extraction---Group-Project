@@ -5,6 +5,7 @@ from pke.unsupervised import (
     TfIdf
 )
 from methods.KeyCluster import KeyCluster
+from methods.EmbedRank import EmbedRank
 
 from common.KeyphraseExtractor import KeyphraseExtractor
 
@@ -19,7 +20,7 @@ pke.LoadFile.normalize_pos_tags = custom_normalize_POS_tags
 kwargs = {
     # 'language': 'en',
     'normalization': "stemming",
-    # 'n_keyphrases': 10,
+    'n_keyphrases': 10,
     # 'redundancy_removal': ,
     # 'n_grams': 1,
     # 'stoplist': ,
@@ -40,6 +41,7 @@ kwargs = {
     # 'cutoff': ,
     # 'sigma': ,
 
+    ## KeyCluster
     # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
     # 'cluster_feature_calculator': WordEmbeddingsClusterFeature,#PPMIClusterFeature,
     # word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
@@ -56,6 +58,9 @@ kwargs = {
     # 'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',
     # 'word_embedding_model':
     'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare], #stemmed_wordwise_phrase_compare,
+
+    ## EmbedRank
+    'sent2vec_model': '../word_embedding_models/english/sent2vec/wiki_bigrams.bin',
 
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
     # 'draw_graphs': True,
@@ -97,8 +102,8 @@ def custom_testing():
     reference_stemmed = pke.utils.load_references(reference_stemmed_file)
     extractor = KeyphraseExtractor()
     models = [
-        KeyCluster,
-        # EmbedRank,
+        # KeyCluster,
+        EmbedRank,
         # TfIdf,
         # TopicRank,
         # SingleRank,

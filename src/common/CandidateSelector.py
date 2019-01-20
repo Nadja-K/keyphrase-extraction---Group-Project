@@ -3,6 +3,10 @@ from collections import defaultdict
 from pke.data_structures import Candidate
 from typing import Callable
 from common.KeyphraseSelector import _MAPPING
+from itertools import chain
+from collections import OrderedDict
+
+from nltk import RegexpParser
 
 # Switch the key and values from _MAPPING
 _MIRRORED_MAPPING = y_dict2 = {y:x for x,y in _MAPPING.items()}
@@ -41,9 +45,13 @@ def embed_rank_candidate_selector(context, **kwargs):
     translated_regex += "}"
     print("Using the following regex for candidate selection: %s" % translated_regex)
 
-    # select unigrams as possible candidates
+    # select possible candidates
     context.candidates = defaultdict(Candidate)
     context.grammar_selection(grammar=translated_regex)
+
+    # Save the tokenized unstemmed, unlowered form which is needed for sent2vec
+    for stemmed_term, candidate in context.candidates.items():
+        candidate.tokenized_form = ' '.join(candidate.surface_forms[0])
 
     return context.candidates.copy()
 
