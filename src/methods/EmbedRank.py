@@ -12,6 +12,7 @@ from collections import defaultdict
 from common.CandidateSelector import CandidateSelector
 from common.DatabaseHandler import DatabaseHandler
 from common.KeyphraseSelector import KeyphraseSelector
+from common.helper import _create_simple_embedding_visualization
 
 
 class EmbedRank(LoadFile):
@@ -42,7 +43,7 @@ class EmbedRank(LoadFile):
 
 
         # Compute the phrase embedding for each candidate phrase
-        tokenized_form_candidate_terms = [' '.join(candidate.tokenized_form) for stemmed_term, candidate in self.candidate_terms.items()]
+        tokenized_form_candidate_terms = [candidate.tokenized_form for stemmed_term, candidate in self.candidate_terms.items()]
         phrase_embeddings = sent2vec_model.get_tokenized_sents_embeddings(tokenized_form_candidate_terms)
 
         # Filter out candidate phrases that were not found in sent2vec
@@ -50,7 +51,7 @@ class EmbedRank(LoadFile):
         for term, keep in zip(list(self.candidate_terms), valid_candidates_mask):
             # Note: do NOT write 'if keep is False', somehow this doesn't work???
             if keep == False:
-                print("%s not found in sent2vec, removing candidate" % term)
+                print("%s not found in sent2vec, removing candidate" % self.candidate_terms[term].tokenized_form)
                 del self.candidate_terms[term]
         phrase_embeddings = phrase_embeddings[valid_candidates_mask, :]
 
@@ -66,6 +67,10 @@ class EmbedRank(LoadFile):
 
         # Collect data and write it to the database
         # FIXME
+
+        # Simple embedding visualization
+        # FIXME: enable/disable on parameter
+        # _create_simple_embedding_visualization(phrase_embeddings, list(self.candidate_terms), list(range(len(self.candidate_terms))), doc_embedding, 'test')
 
     def _collect_data(self, clusters, cluster_exemplar_terms, unfiltered_candidate_keyphrases, candidate_keyphrases):
         # FIXME

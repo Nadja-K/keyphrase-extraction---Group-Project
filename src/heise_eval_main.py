@@ -46,10 +46,10 @@ kwargs = {
     # 'global_cooccurrence_matrix': 'heise_out.cooccurrence',#'inspec_out.cooccurrence',#'semeval_out.cooccurrence',
     # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
-    # 'regex': 'n{1,3}',
+    'regex': 'n{1,3}',
     # 'num_clusters': 20,
     # 'cluster_calc': ,
-    'factor': 1/10,
+    # 'factor': 1/10,
     'frequent_word_list_file': 'data/frequent_word_lists/de_50k.txt',
     'min_word_count': 1000,
     # 'frequent_word_list': ['test'],
@@ -102,6 +102,21 @@ def heise_eval():
             print("%s - Macro average precision: %s, recall: %s, f-score: %s" % (
             key, macro_precision, macro_recall, macro_f_score))
 
+def extract_keyphrases_from_raw_text():
+    extractor = KeyphraseExtractor()
+    models = [
+        # KeyCluster,
+        EmbedRank,
+        # TfIdf,
+        # TopicRank,
+        # SingleRank,
+        # TextRank,
+        # KPMiner
+    ]
+
+    for m in models:
+        keyphrases = extractor.extract_keyphrases_from_raw_text(m, 'test_input.txt', **kwargs)
+        print(keyphrases)
 
 def main():
     # Overwrite a few functions and variables so that the german language can be supported
@@ -109,6 +124,7 @@ def main():
     pke.base.ISO_to_language['de'] = 'german'
 
     heise_eval()
+    # extract_keyphrases_from_raw_text()
 
 
 if __name__ == '__main__':

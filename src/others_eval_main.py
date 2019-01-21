@@ -2,7 +2,7 @@ import os
 import glob
 import pke
 from pke.unsupervised import (
-    TfIdf
+    TfIdf, SingleRank, TextRank, TopicRank, MultipartiteRank
 )
 from methods.KeyCluster import KeyCluster
 from methods.EmbedRank import EmbedRank
@@ -108,6 +108,7 @@ def custom_testing():
         # TopicRank,
         # SingleRank,
         # TextRank,
+        # MultipartiteRank,
         # KPMiner
     ]
 
@@ -135,20 +136,35 @@ def custom_testing():
     #     keyphrases = extractor.extract_keyphrases(m, 'test_input.txt', **kwargs)
     #     print(keyphrases)
 
+def extract_keyphrases_from_raw_text():
+    extractor = KeyphraseExtractor()
+    models = [
+        # KeyCluster,
+        # EmbedRank,
+        # TfIdf,
+        TopicRank,
+        # SingleRank,
+        # TextRank,
+        # KPMiner
+    ]
+
+    for m in models:
+        keyphrases = extractor.extract_keyphrases_from_raw_text(m, 'test_input.txt', **kwargs)
+        print(keyphrases)
 
 def collect_dataset_statistics():
     # some dataset statistic collection, can be removed
-    # train_folder = "../ake-datasets/datasets/DUC-2001/train"
-    # test_folder = "../ake-datasets/datasets/DUC-2001/test"
-    # reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
+    train_folder = "../ake-datasets/datasets/DUC-2001/train"
+    test_folder = "../ake-datasets/datasets/DUC-2001/test"
+    reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
     #
     # train_folder = "../ake-datasets/datasets/Inspec/train"
     # test_folder = "../ake-datasets/datasets/Inspec/dev"
     # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
 
-    train_folder = "../ake-datasets/datasets/SemEval-2010/train"
-    test_folder = "../ake-datasets/datasets/SemEval-2010/test"
-    reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
+    # train_folder = "../ake-datasets/datasets/SemEval-2010/train"
+    # test_folder = "../ake-datasets/datasets/SemEval-2010/test"
+    # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
 
     keyphrase_extractor = KeyphraseExtractor()
     reference_stemmed = pke.utils.load_references(reference_stemmed_file)
@@ -169,8 +185,6 @@ def collect_dataset_statistics():
         for keyphrase in reference:
             keyphrase_length += len(keyphrase.split(' '))
             tmp = False
-            if keyphrase == 'control stream error probabl':
-                print(sent.stems)
             for sent in extractor.sentences:
                 # if keyphrase_extractor._is_exact_match(keyphrase, ' '.join(sent.stems)):
                 if keyphrase in ' '.join(sent.stems):
@@ -198,7 +212,7 @@ def main():
     pke.base.ISO_to_language['de'] = 'german'
 
     custom_testing()
-
+    # extract_keyphrases_from_raw_text()
 
 if __name__ == '__main__':
     main()

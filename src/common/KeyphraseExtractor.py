@@ -393,6 +393,30 @@ class KeyphraseExtractor:
 
         return self._calc_avg_scores(evaluators, num_documents_evaluated, print_document_scores=False)
 
+    def extract_keyphrases_from_raw_text(self, model, input_document, **kwargs):
+        # Parse the frequent word list once for the model
+        kwargs = _load_frequent_word_list(**kwargs)
+
+        # Load a spacy model once for the model
+        kwargs = _load_word_embedding_model(**kwargs)
+
+        # Load the global cooccurrence matrix if specified
+        kwargs = load_global_cooccurrence_matrix(**kwargs)
+
+        # Load the sent2vec model
+        kwargs.update({'sent2vec_model': EmbeddingDistributor(kwargs.get('sent2vec_model', '../word_embedding_models/german/sent2vec/de_model.bin'))})
+
+        language = kwargs.get('language', 'en')
+        normalization = kwargs.get('normalization', 'stemming')
+
+        filename = os.path.splitext(os.path.basename(input_document))[0]
+        extractor = model()
+        extractor.load_document(input_document, language=language, normalization=normalization)
+
+        print("Processing File: %s" % filename)
+        keyphrases, context, adjusted_params = self.extract_keyphrases(model, extractor, filename, **kwargs)
+        return keyphrases
+
     def _calc_avg_scores(self, evaluators, num_documents, print_document_scores=True):
         for key, evaluator_data in evaluators.items():
             evaluators[key]['macro_precision'] = (evaluator_data['precision_total'] / num_documents)

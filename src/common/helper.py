@@ -418,6 +418,7 @@ def _repel_labels(ax, x, y, labels, k=0.01):
     ax.set_xlim([mins[0], maxs[0]])
     ax.set_ylim([mins[1], maxs[1]])
 
+
 def _create_simple_embedding_visualization(data, labels, selected_candidates, doc, filename):
     labels = list(labels)
     data = np.append(data, doc, axis=0)
@@ -432,22 +433,21 @@ def _create_simple_embedding_visualization(data, labels, selected_candidates, do
     x = pca_2d[:, 3]
     y = pca_2d[:, 4]
 
-    fig, ax = plt.subplots(figsize=(15, 10))
+    fig, ax = plt.subplots(figsize=(18, 10))
     ax.scatter(x[:-1], y[:-1], marker='o', c=colors, s=90)
-    ax.scatter(x[-1], y[-1], marker='*', c='r', s=90)
+    ax.scatter(x[-1], y[-1], marker='*', c='r', s=135)
     # for i, txt in enumerate(labels):
     #     ax.annotate(txt, (x[i], y[i]))
 
-    _repel_labels(ax, x, y, labels, k=0.2)
+    _repel_labels(ax, x, y, labels, k=0.21)
 
-    ax.set_xlim(-2, 2.5)
+    ax.set_xlim(-2, 2.6)
     ax.set_ylim(-2, 2)
-    plt.xticks(np.arange(-2, 2.5, 0.5))
+    plt.xticks(np.arange(-2, 3.0, 0.5))
     plt.yticks(np.arange(-2, 2, 0.5))
 
     i = len(labels)
-    ax.annotate('Document', (x[i], y[i]))
-
+    ax.annotate('Document', (x[i], y[i]), fontsize=14)
 
     markers = []
     markers.append(mlines.Line2D([], [], color='r', marker='*', linestyle='None',
@@ -456,9 +456,9 @@ def _create_simple_embedding_visualization(data, labels, selected_candidates, do
                                  markersize=10, label='Candidate Keyphrases'))
     markers.append(mlines.Line2D([], [], color='g', marker='o', linestyle='None',
                                  markersize=10, label='Selected Keyphrases'))
-    plt.legend(handles=markers, loc='upper left')
+    plt.legend(handles=markers, loc='upper left', prop={'size': 14})
 
     plt.title('Simplified Visualization', fontdict={'fontsize': 20})
     plt.tight_layout()
-    fig.savefig(os.path.basename(filename).split('.')[0] + ".png")
+    fig.savefig(os.path.basename(filename).split('.')[0] + ".pdf")
     plt.close()
