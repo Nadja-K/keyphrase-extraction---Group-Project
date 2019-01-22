@@ -1,0 +1,19 @@
+.widget-title {
+    /* font: 20px/26px Arial, sans-serif; */
+    background-image: linear-gradient(#ffb1bb, #ffb1bb),
+      linear-gradient(#ffb1bb, #ffb1bb),
+      linear-gradient(#ffb1bb, #ffb1bb),
+      linear-gradient(#ffb1bb, #ffb1bb);
+    
+    background-repeat: no-repeat;
+    background-size: 2px 25%;
+    background-position: bottom left, bottom right;
+  
+    /* #border: solid #ffb1bb;
+    #text-align: justify; */
+    border-bottom: solid #ffb1bb 2px;
+    /* #display: inline-block; */
+    vertical-align: top;
+    padding: 0px 4px;
+    /* #margin: 20px; */
+  }
