@@ -39,6 +39,8 @@ class DatabaseHandler:
             del(reformatted_settings['word_embedding_model'])
         if 'global_cooccurrence_matrix' in reformatted_settings.keys():
             del(reformatted_settings['global_cooccurrence_matrix'])
+        if 'sent2vec_model' in reformatted_settings.keys():
+            del(reformatted_settings['sent2vec_model'])
 
         # Adjust the settings so that the information can be written to the database
         comp_funcs = []
