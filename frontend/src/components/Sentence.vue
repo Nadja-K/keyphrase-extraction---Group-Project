@@ -25,13 +25,19 @@ export default {
         tooltipProps: {
             type: Array,
             default() {
-                return ['pos', 'cluster'];
+                return ['pos', 'cluster', 'weight'];
             },
         },
         braceActive: {
             type: Array,
             default() {
                 return [true, true];
+            },
+        },
+        boldActive: {
+            type: Array,
+            default() {
+                return [];
             },
         },
         highlightActive: {
@@ -92,7 +98,7 @@ export default {
             }
 
             if (styleOptions.bold) {
-                if (model[styleOptions.bold]) {
+                if (model[styleOptions.bold] && this.boldActive.includes(model[styleOptions.bold])) {
                     style = {
                         fontWeight: 900,
                     };

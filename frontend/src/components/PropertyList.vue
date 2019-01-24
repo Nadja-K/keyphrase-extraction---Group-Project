@@ -1,6 +1,6 @@
 <template>
   <v-data-table
-    v-model="selected"
+    v-model="selectedState"
     :headers="headers"
     :items="items"
     select-all
@@ -15,9 +15,10 @@
             :input-value="props.selected"
             primary
             hide-details
+            :color="`#${palette[props.item.value]}`"
           ></v-checkbox>
         </td>
-        <td v-for="key in Object.keys(props.item)"
+        <td v-for="key in Object.keys(props.item).filter(key => key !== 'value')"
             :key="key"
         >
             {{ props.item[key] }}
@@ -28,30 +29,33 @@
 </template>
 
 <script>
+import palette from '../palette';
+
 export default {
+    model: {
+        prop: 'selected',
+        event: 'change',
+    },
     props: {
         headers: Array,
         items: Array,
         selected: Array,
     },
-    data: () => ({
-        headers2: [
-            {
-                text: 'Dessert (100g serving)',
-                align: 'left',
-                sortable: false,
-                value: 'name',
+    computed: {
+        selectedState: {
+            get() {
+                return this.selected;
             },
-        ],
-        desserts: [
-            {
-                name: 'Frozen Yogurt',
+            set(value) {
+                this.$emit('change', value);
             },
-            {
-                name: 'Ice cream sandwich',
-            },
-        ],
-    }),
+        },
+    },
+    data() {
+        return {
+            palette,
+        };
+    },
     methods: {
         toggleAll() {
             if (this.selected.length) this.selected = [];

@@ -37,14 +37,13 @@
                     :key="clusterId"
                 />
             </div> -->
-            <PropertyList :items="items"/>
+            <PropertyList :items="items" :headers="headers" v-model="selectedClusters"/>
         </v-card>
     </div>
 </template>
 
 <script>
 import { mapActions, mapState, mapGetters } from 'vuex';
-import palette from '../palette';
 import PropertyList from './PropertyList.vue';
 
 export default {
@@ -77,19 +76,14 @@ export default {
         },
         selectedClusters: {
             get() {
-                return this.ui.keyClusterProperties.selectedClusters;
+                return this.ui.keyClusterProperties.selectedClusters.map(entry => ({
+                    name: `cluster ${entry}`,
+                    value: entry,
+                }));
             },
             set(value) {
-                if (value.length > 0 && value.length < this.selectedRun.num_clusters) {
-                    this.allSelectedIndetermined = true;
-                    this.allSelectedState = false;
-                } else if (value.length === this.selectedRun.num_clusters) {
-                    this.allSelectedIndetermined = false;
-                    this.allSelectedState = true;
-                } else {
-                    this.allSelectedIndetermined = false;
-                }
-                this.setKeyClusterProperty({ selectedClusters: value });
+                const selectedIds = value.map(entry => entry.value);
+                this.setKeyClusterProperty({ selectedClusters: selectedIds });
             },
         },
         allSelected: {
@@ -108,16 +102,23 @@ export default {
             },
         },
         items() {
-            return [...Array(this.selectedRun.num_clusters)].map((x, i) => ({
-                name: `cluster ${i}`,
+            return [...Array(this.selectedRun.num_clusters + 1).keys()].slice(1).map(entry => ({
+                name: `cluster ${entry}`,
+                value: entry,
             }));
         },
     },
     data() {
         return {
-            palette,
             allSelectedState: false,
             allSelectedIndetermined: false,
+            headers: [
+                {
+                    text: 'cluster',
+                    align: 'left',
+                    sortable: false,
+                },
+            ],
         };
     },
     methods: {
