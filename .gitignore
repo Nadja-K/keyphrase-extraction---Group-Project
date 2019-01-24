@@ -3,3 +3,8 @@ experiments/*
 *.csv
 *.txt
 !requirements.txt
+data/*.tsv.gz
+cluster_graphs/*.png
+heatmap_graphs/*.png
+simple_cluster_graphs/*.png
+__pycache__/CandidateTermSelector.cpython-36.pyc

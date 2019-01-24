@@ -86,18 +86,18 @@ def custom_testing():
     # compute_global_cooccurrence(test_folder, "semeval_out.cooccurrence", **kwargs)
 
     # Inspec
-    train_folder = "../ake-datasets/datasets/Inspec/train"
-    test_folder = "../ake-datasets/datasets/Inspec/dev"
-    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+    # train_folder = "../ake-datasets/datasets/Inspec/train"
+    # test_folder = "../ake-datasets/datasets/Inspec/dev"
+    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
 
     # Only needs to be done once for a dataset
     # print("Computing the global cooccurrence matrix.")
     # compute_global_cooccurrence("inspec_out.cooccurrence", input_dir=test_folder, **kwargs)
 
     # DUC-2001
-    # train_folder = "../ake-datasets/datasets/DUC-2001/train"
-    # test_folder = "../ake-datasets/datasets/DUC-2001/test"
-    # reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
+    train_folder = "../ake-datasets/datasets/DUC-2001/train"
+    test_folder = "../ake-datasets/datasets/DUC-2001/test"
+    reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
 
     reference_stemmed = pke.utils.load_references(reference_stemmed_file)
     extractor = KeyphraseExtractor()

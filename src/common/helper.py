@@ -20,6 +20,7 @@ import matplotlib.lines as mlines
 import os
 import gzip
 import networkx as nx
+import re
 
 from common.ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature, WordEmbeddingsClusterFeature
 from common.DatabaseHandler import DatabaseHandler
@@ -29,6 +30,51 @@ _SPACY_MODELS = {
     'en_vectors_web_lg',
     'de_core_news_sm'
 }
+
+
+def collect_keyphrase_data(context, selected_candidates):
+    selected_candidates = list(zip(*selected_candidates))[0]
+    text = []
+
+    # Get the starting offset for each sentence
+    sentence_start_offset = 0
+    for sentence in context.sentences:
+        raw_sentence = ' '.join(sentence.words)
+        text.append([raw_sentence, sentence_start_offset])
+        sentence_start_offset += len(raw_sentence) + 1
+
+    data_canidate_keyphrases = dict()
+    for term, candidate in context.candidates.items():
+        data_canidate_keyphrases[term] = dict()
+        data_canidate_keyphrases[term]['offsets'] = []
+        data_canidate_keyphrases[term]['exemplar_terms_count'] = 0
+        data_canidate_keyphrases[term]['pos'] = candidate.pos_patterns
+        data_canidate_keyphrases[term]['selected'] = False
+        data_canidate_keyphrases[term]['sentence_id'] = candidate.sentence_ids
+        data_canidate_keyphrases[term]['stems'] = candidate.lexical_form
+        data_canidate_keyphrases[term]['weight'] = context.weights[term].item()
+        data_canidate_keyphrases[term]['words'] = candidate.surface_forms
+
+        if term in selected_candidates:
+            data_canidate_keyphrases[term]['selected'] = True
+
+        # Extract the exact offsets for each candidate occurrence in the original text
+        for sentence_id, surface_form in zip(candidate.sentence_ids, candidate.surface_forms):
+            candidate_offsets = []
+
+            raw_surface_form = ' '.join(surface_form)
+            start_offsets = [m.start() for m in
+                             re.finditer(r'\b(' + re.escape(raw_surface_form) + r')\b', text[sentence_id][0])]
+            # Find all occurrences of the current candidate in the current sentence and add the offsets
+            for start_offset in start_offsets:
+                start_offset += text[sentence_id][1]
+                end_offset = start_offset + len(raw_surface_form)
+                candidate_offsets.append([start_offset, end_offset])
+
+            if len(candidate_offsets) > 0:
+                data_canidate_keyphrases[term]['offsets'].extend(candidate_offsets)
+
+    return data_canidate_keyphrases
 
 
 def reformat_glove_model(gloveFile):

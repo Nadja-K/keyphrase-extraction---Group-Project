@@ -60,6 +60,7 @@ class DatabaseHandler:
             'cluster_members': data_cluster_members,
             'candidate_keyphrases': data_candidate_keyphrases
         }
+        print(run)
         self.write_document_run_to_db(filename, run)
 
     def write_document_run_to_db(self, id, run):

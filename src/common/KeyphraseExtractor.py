@@ -3,6 +3,7 @@ from nltk.corpus import stopwords
 from string import punctuation
 import glob
 import os
+import logging
 from pke.unsupervised import (
     TopicRank, SingleRank,
     MultipartiteRank, PositionRank,
@@ -20,7 +21,7 @@ from common.Cluster import HierarchicalClustering
 from common.KeyphraseSelector import KeyphraseSelector
 from common.Cluster import euclid_dist
 from common.helper import calc_num_cluster, _load_word_embedding_model, \
-    _load_frequent_word_list, load_global_cooccurrence_matrix
+    _load_frequent_word_list, load_global_cooccurrence_matrix, collect_keyphrase_data
 from common.DatabaseHandler import DatabaseHandler
 
 from eval.evaluation import Evaluator, stemmed_compare
@@ -279,6 +280,7 @@ class KeyphraseExtractor:
     def _evaluate_document(self, model, input_document, references, evaluators, print_document_scores=True, **kwargs):
         language = kwargs.get('language', 'en')
         normalization = kwargs.get('normalization', 'stemming')
+        redundancy_removal = kwargs.get('redundancy_removal', False)
 
         # make sure to initialize the evaluator clean for every run!
         for key, evaluator_data in evaluators.items():
@@ -337,8 +339,11 @@ class KeyphraseExtractor:
             if model is KeyCluster:
                 database_handler.write_data_to_db(filename, doc_eval_data, data_cluster_members=extractor.data_cluster_members, data_candidate_keyphrases=extractor.data_candidate_keyphrases, **adjusted_params)
             else:
-                unstemmed_keyphrases = extractor.get_n_best(n=adjusted_params.get('n_keyphrases', 10), redundancy_removal=True, stemming=False)
-                database_handler.write_data_to_db(filename, doc_eval_data, data_candidate_keyphrases=unstemmed_keyphrases, **adjusted_params)
+                # unstemmed_keyphrases = extractor.get_n_best(n=adjusted_params.get('n_keyphrases', 10), redundancy_removal=True, stemming=False)
+                unstemmed_keyphrases = extractor.get_n_best(n=adjusted_params.get('n_keyphrases', 10),
+                                                            redundancy_removal=redundancy_removal, stemming=normalization)
+                data_candidate_keyphrases = collect_keyphrase_data(extractor, unstemmed_keyphrases)
+                database_handler.write_data_to_db(filename, doc_eval_data, data_candidate_keyphrases=data_candidate_keyphrases, **adjusted_params)
         return evaluators
 
     def calculate_model_f_score(self, model, input_data=None, references=None, print_document_scores=True, **kwargs):

@@ -9,7 +9,7 @@ from common.KeyphraseExtractor import KeyphraseExtractor
 from common.ClusterFeatureCalculator import WordEmbeddingsClusterFeature
 from eval.evaluation import stemmed_wordwise_phrase_compare, stemmed_compare
 
-from common.helper import custom_normalize_POS_tags, compute_db_document_frequency
+from common.helper import custom_normalize_POS_tags, compute_db_document_frequency#, custom_get_n_best
 
 pke.base.ISO_to_language['de'] = 'german'
 pke.LoadFile.normalize_pos_tags = custom_normalize_POS_tags
@@ -22,7 +22,7 @@ kwargs = {
     # 'redundancy_removal': ,
     # 'n_grams': 1,
     # 'stoplist': ,
-    # 'frequency_file': 'data/heise_df_counts.tsv.gz',  # '../ake-datasets/datasets/SemEval-2010/df_counts.tsv.gz',
+    'frequency_file': 'data/heise_df_counts.tsv.gz',  # '../ake-datasets/datasets/SemEval-2010/df_counts.tsv.gz',
     # 'window': 2,
     # 'pos': ,
     # 'top_percent': 1.0,
@@ -49,7 +49,7 @@ kwargs = {
     'regex': 'n{1,3}',
     # 'num_clusters': 20,
     # 'cluster_calc': ,
-    'factor': 1/10,
+    # 'factor': 1/10,
     'frequent_word_list_file': 'data/frequent_word_lists/de_50k.txt',
     'min_word_count': 1000,
     # 'frequent_word_list': ['test'],
@@ -64,11 +64,11 @@ kwargs = {
     # 'draw_graphs': True,
     # 'print_document_scores': False,
 
-    # 'num_documents': 200,
-    'batch_size': 1000,
+    'num_documents': 200,
+    'batch_size': 100,
     'reference_table': 'stemmed_filtered_stemmed',
     # 'table': 'pos_tags',
-    'write_to_db': False
+    'write_to_db': True
 }
 
 
@@ -76,7 +76,7 @@ def heise_eval():
     extractor = KeyphraseExtractor()
     models = [
         # KeyCluster,
-        # EmbedRank,
+        EmbedRank,
         # TfIdf,
         # TopicRank,
         # SingleRank,
@@ -84,8 +84,8 @@ def heise_eval():
         # KPMiner
     ]
 
-    print("Computing the document frequency file.")
-    compute_db_document_frequency("heise_df_counts.tsv.gz", **kwargs)
+    # print("Computing the document frequency file.")
+    # compute_db_document_frequency("heise_df_counts.tsv.gz", **kwargs)
 
     # print("Computing the global cooccurrence matrix.")
     # compute_global_cooccurrence("heise_out.cooccurrence", **kwargs)
@@ -106,8 +106,8 @@ def extract_keyphrases_from_raw_text():
     extractor = KeyphraseExtractor()
     models = [
         # KeyCluster,
-        EmbedRank,
-        # TfIdf,
+        # EmbedRank,
+        TfIdf,
         # TopicRank,
         # SingleRank,
         # TextRank,
@@ -121,6 +121,7 @@ def extract_keyphrases_from_raw_text():
 def main():
     # Overwrite a few functions and variables so that the german language can be supported
     pke.LoadFile.normalize_POS_tags = custom_normalize_POS_tags
+    # pke.LoadFile.get_n_best = custom_get_n_best
     pke.base.ISO_to_language['de'] = 'german'
 
     heise_eval()
