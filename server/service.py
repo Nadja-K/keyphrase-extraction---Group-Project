@@ -1,4 +1,5 @@
 from key_cluster_service import KeyClusterService
+from tfidf_service import TfIdfService
 
 kc_service = KeyClusterService()
 ti_service = TfIdfService()
@@ -11,7 +12,11 @@ def create_document_view_model(document):
 
         if run['settings']['model'] == 'KeyCluster':
             run_model = kc_service.create_run_model(document, run)
-            runs.append(run_model)
+        elif run['settings']['model'] == 'TfIdf':
+            run_model = ti_service.create_run_model(document, run)
+
+        run_model['settings'] = run['settings']
+        runs.append(run_model)
 
     view_model = {
         'runs': runs
