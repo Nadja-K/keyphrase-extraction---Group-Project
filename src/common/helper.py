@@ -32,16 +32,24 @@ _SPACY_MODELS = {
 }
 
 
+def find_keyphrase_in_sentence(sentence, keyphrase):
+    offsets = []
+    keyphrase_length = len(keyphrase)
+    for index, _ in enumerate(sentence.words):
+        sublist = sentence.words[index: index + keyphrase_length]
+        if sublist == keyphrase:
+            start_index = index
+            end_index = index + keyphrase_length - 1
+
+            start_offset = sentence.meta['char_offsets'][start_index][0]
+            end_offset = sentence.meta['char_offsets'][end_index][1]
+            offsets.append((start_offset, end_offset))
+
+    return offsets
+
+
 def collect_keyphrase_data(context, selected_candidates):
     selected_candidates = list(zip(*selected_candidates))[0]
-    text = []
-
-    # Get the starting offset for each sentence
-    sentence_start_offset = 0
-    for sentence in context.sentences:
-        raw_sentence = ' '.join(sentence.words)
-        text.append([raw_sentence, sentence_start_offset])
-        sentence_start_offset += len(raw_sentence) + 1
 
     data_canidate_keyphrases = dict()
     for term, candidate in context.candidates.items():
@@ -52,7 +60,7 @@ def collect_keyphrase_data(context, selected_candidates):
         data_canidate_keyphrases[term]['selected'] = False
         data_canidate_keyphrases[term]['sentence_id'] = candidate.sentence_ids
         data_canidate_keyphrases[term]['stems'] = candidate.lexical_form
-        data_canidate_keyphrases[term]['weight'] = context.weights[term].item()
+        data_canidate_keyphrases[term]['weight'] = np.float64(context.weights.get(term, 0)).item()
         data_canidate_keyphrases[term]['words'] = candidate.surface_forms
 
         if term in selected_candidates:
@@ -60,19 +68,10 @@ def collect_keyphrase_data(context, selected_candidates):
 
         # Extract the exact offsets for each candidate occurrence in the original text
         for sentence_id, surface_form in zip(candidate.sentence_ids, candidate.surface_forms):
-            candidate_offsets = []
+            candidate_offsets = find_keyphrase_in_sentence(context.sentences[sentence_id], surface_form)
+            data_canidate_keyphrases[term]['offsets'].extend(candidate_offsets)
 
-            raw_surface_form = ' '.join(surface_form)
-            start_offsets = [m.start() for m in
-                             re.finditer(r'\b(' + re.escape(raw_surface_form) + r')\b', text[sentence_id][0])]
-            # Find all occurrences of the current candidate in the current sentence and add the offsets
-            for start_offset in start_offsets:
-                start_offset += text[sentence_id][1]
-                end_offset = start_offset + len(raw_surface_form)
-                candidate_offsets.append([start_offset, end_offset])
-
-            if len(candidate_offsets) > 0:
-                data_canidate_keyphrases[term]['offsets'].extend(candidate_offsets)
+        # print(term, data_canidate_keyphrases[term]['offsets'], data_canidate_keyphrases[term]['words'])
 
     return data_canidate_keyphrases
 

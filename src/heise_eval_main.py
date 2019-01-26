@@ -1,5 +1,5 @@
 import pke
-from pke.unsupervised import TfIdf
+from pke.unsupervised import TfIdf, TextRank, SingleRank, TopicRank
 
 from methods.EmbedRank import EmbedRank
 from methods.KeyCluster import KeyCluster
@@ -76,12 +76,11 @@ def heise_eval():
     extractor = KeyphraseExtractor()
     models = [
         # KeyCluster,
-        EmbedRank,
+        # EmbedRank,
         # TfIdf,
-        # TopicRank,
+        TopicRank,
         # SingleRank,
         # TextRank,
-        # KPMiner
     ]
 
     # print("Computing the document frequency file.")

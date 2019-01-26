@@ -15,7 +15,7 @@ export default {
                 },
             ],
         },
-        selectedRunIndex: 0,
+        selectedRunIndex: 2,
     },
     getters: {
         selectedRun(state) {

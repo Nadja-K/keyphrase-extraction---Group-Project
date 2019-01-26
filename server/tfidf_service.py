@@ -17,7 +17,7 @@ class TfIdfService:
 
         for index, word in enumerate(sentence['words']):
             if word.lower() in candidate_keyphrases:
-                weights =  candidate_keyphrases[word.lower()]
+                weights = candidate_keyphrases[word.lower()]
                 keyphrase_model = self.create_keyphrase_model(word, sentence, index, weights)
                 sentence_model.append(keyphrase_model)
             else:

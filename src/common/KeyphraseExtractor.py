@@ -338,8 +338,12 @@ class KeyphraseExtractor:
             database_handler = DatabaseHandler()
             if model is KeyCluster:
                 database_handler.write_data_to_db(filename, doc_eval_data, data_cluster_members=extractor.data_cluster_members, data_candidate_keyphrases=extractor.data_candidate_keyphrases, **adjusted_params)
+            elif model is TfIdf:
+                unstemmed_keyphrases = extractor.get_n_best(n=adjusted_params.get('n_keyphrases', 10),
+                                                            redundancy_removal=True,
+                                                            stemming=False)
+                database_handler.write_data_to_db(filename, doc_eval_data, data_candidate_keyphrases=unstemmed_keyphrases, **adjusted_params)
             else:
-                # unstemmed_keyphrases = extractor.get_n_best(n=adjusted_params.get('n_keyphrases', 10), redundancy_removal=True, stemming=False)
                 unstemmed_keyphrases = extractor.get_n_best(n=adjusted_params.get('n_keyphrases', 10),
                                                             redundancy_removal=redundancy_removal, stemming=normalization)
                 data_candidate_keyphrases = collect_keyphrase_data(extractor, unstemmed_keyphrases)
