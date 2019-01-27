@@ -250,20 +250,22 @@ class KeyphraseExtractor:
             params['num_clusters'] = num_clusters
         elif model in [EmbedRank]:
             """
-            :param regex
-            :param candidate_selector
-            :param sent2vec_model
+            :param str regex
+            :param CandidateSelector candidate_selector
+            :param EmbeddingDistributor sent2vec_model
+            :param bool draw_graphs            
             """
             # Initialize standard parameters for EmbedRank
             regex, params = self.get_param('regex', 'a*n+', **params)
             candidate_selector, params = self.get_param('candidate_selector', CandidateSelector(embed_rank_candidate_selector), **params)
-            sent2vec_model = params.get('sent2vec_model')
+            sent2vec_model = params.get('sent2vec_model')#self.get_param('sent2vec_model', '../word_embedding_models/english/sent2vec/wiki_bigrams.bin', **params)
+            draw_graphs, params = self.get_param('draw_graphs', False, **params)
 
             # Candidate Selection
             extractor.candidate_selection(**params)
 
             # Keyphrase Selection
-            extractor.candidate_weighting(sent2vec_model=sent2vec_model)
+            extractor.candidate_weighting(sent2vec_model=sent2vec_model, filename=filename, draw_graphs=draw_graphs)
         else:
             extractor.candidate_selection()
             extractor.candidate_weighting()
@@ -373,7 +375,7 @@ class KeyphraseExtractor:
         kwargs = load_global_cooccurrence_matrix(**kwargs)
 
         # Load the sent2vec model
-        kwargs.update({'sent2vec_model': EmbeddingDistributor(kwargs.get('sent2vec_model', '../word_embedding_models/german/sent2vec/de_model.bin'))})
+        kwargs.update({'sent2vec_model': EmbeddingDistributor(kwargs.get('sent2vec_model', '../word_embedding_models/english/sent2vec/wiki_bigrams.bin'))})
 
         if input_data is None or references is None:
             db_handler = DatabaseHandler()

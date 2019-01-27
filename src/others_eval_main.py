@@ -52,8 +52,8 @@ kwargs = {
     # 'num_clusters': 20,
     # 'cluster_calc': ,
     # 'factor': 2/3,
-    'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',
-    'min_word_count': 1000,
+    # 'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',
+    # 'min_word_count': 1000,
     # 'frequent_word_list': ['test'],
     # 'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',
     # 'word_embedding_model':
@@ -76,9 +76,9 @@ kwargs = {
 
 def custom_testing():
     # SemEval-2010
-    # train_folder = "../ake-datasets/datasets/SemEval-2010/train"
-    # test_folder = "../ake-datasets/datasets/SemEval-2010/test"
-    # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
+    train_folder = "../ake-datasets/datasets/SemEval-2010/train"
+    test_folder = "../ake-datasets/datasets/SemEval-2010/test"
+    reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
 
     # Only needs to be done once for a dataset
     # print("Computing the global cooccurrence matrix.")
@@ -95,9 +95,9 @@ def custom_testing():
     # compute_global_cooccurrence("inspec_out.cooccurrence", input_dir=test_folder, **kwargs)
 
     # DUC-2001
-    train_folder = "../ake-datasets/datasets/DUC-2001/train"
-    test_folder = "../ake-datasets/datasets/DUC-2001/test"
-    reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
+    # train_folder = "../ake-datasets/datasets/DUC-2001/train"
+    # test_folder = "../ake-datasets/datasets/DUC-2001/test"
+    # reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
 
     reference_stemmed = pke.utils.load_references(reference_stemmed_file)
     extractor = KeyphraseExtractor()
