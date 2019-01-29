@@ -86,9 +86,11 @@ def custom_testing():
     # compute_global_cooccurrence(test_folder, "semeval_out.cooccurrence", **kwargs)
 
     # Inspec
-    # train_folder = "../ake-datasets/datasets/Inspec/train"
+    train_folder = "../ake-datasets/datasets/Inspec/train"
     # test_folder = "../ake-datasets/datasets/Inspec/dev"
+    test_folder = "../ake-datasets/datasets/Inspec/test"
     # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
 
     # Only needs to be done once for a dataset
     # print("Computing the global cooccurrence matrix.")

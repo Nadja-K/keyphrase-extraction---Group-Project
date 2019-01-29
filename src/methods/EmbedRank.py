@@ -12,9 +12,9 @@ class EmbedRank(LoadFile):
         # Select candidate Keyphrases based on PoS-Tags with a regex
         candidate_selector.select_candidates(self, **kwargs)
 
-    def candidate_weighting(self, sent2vec_model, filename, draw_graphs=False):
+    def candidate_weighting(self, sent2vec_model, filename, draw_graphs=False, language='en'):
         # Compute the document embedding based on only nouns and adjectives
-        self._compute_document_embedding(sent2vec_model)
+        self._compute_document_embedding(sent2vec_model, language)
 
         # Compute the phrase embedding for each candidate phrase
         self._compute_phrase_embeddings(sent2vec_model)
@@ -26,7 +26,7 @@ class EmbedRank(LoadFile):
         if draw_graphs is True:
             _create_simple_embedding_visualization(self.phrase_embeddings, list(self.candidate_terms), list(range(len(self.candidate_terms))), self.doc_embedding, filename)
 
-    def _compute_document_embedding(self, sent2vec_model):
+    def _compute_document_embedding(self, sent2vec_model, language):
         tokenized_doc_text = ""
         for sent in self.sentences:
             indices = np.where(np.array(sent.pos) == 'NOUN')[0]
@@ -34,19 +34,23 @@ class EmbedRank(LoadFile):
 
             for index in indices:
                 # Note: EmbedRank makes a lower here for the document but not later for the candidates
-                # FIXME: find out if lower is better or if the whole method works better without the lower part
-                tokenized_doc_text = tokenized_doc_text + " " + sent.words[index]  # .lower()
+                if language == 'en':
+                    tokenized_doc_text = tokenized_doc_text + " " + sent.words[index].lower()
+                else:
+                    tokenized_doc_text = tokenized_doc_text + " " + sent.words[index]
         tokenized_doc_text = tokenized_doc_text[1:]
         self.doc_embedding = sent2vec_model.get_tokenized_sents_embeddings([tokenized_doc_text])
 
     def _compute_phrase_embeddings(self, sent2vec_model):
+        sorted_candidates = sorted(self.candidates.items())
         tokenized_form_candidate_terms = [candidate.tokenized_form for stemmed_term, candidate in
-                                          self.candidates.items()]
+                                          sorted_candidates]
         self.phrase_embeddings = sent2vec_model.get_tokenized_sents_embeddings(tokenized_form_candidate_terms)
 
         # Filter out candidate phrases that were not found in sent2vec
         valid_candidates_mask = ~np.all(self.phrase_embeddings == 0, axis=1)
-        for term, keep in zip(list(self.candidates), valid_candidates_mask):
+        for candidate_tuple, keep in zip(sorted_candidates, valid_candidates_mask):
+            term, candidate = candidate_tuple
             # Note: do NOT write 'if keep is False', somehow this doesn't work???
             if keep == False:
                 # print("%s not found in sent2vec, removing candidate" % self.candidates[term].tokenized_form)
@@ -54,7 +58,8 @@ class EmbedRank(LoadFile):
         self.phrase_embeddings = self.phrase_embeddings[valid_candidates_mask, :]
 
     def _rank_candidates(self):
-        for index, term in enumerate(self.candidates):
+        for index, candidate_tuple in enumerate(sorted(self.candidates.items())):
+            term, candidate = candidate_tuple
             candidate_embedding = self.phrase_embeddings[index]
 
             # compute the cos distance/similarity
