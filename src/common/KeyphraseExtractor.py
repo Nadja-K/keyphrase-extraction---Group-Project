@@ -250,6 +250,7 @@ class KeyphraseExtractor:
             params['num_clusters'] = num_clusters
         elif model in [EmbedRank]:
             """
+            :param str language
             :param str regex
             :param CandidateSelector candidate_selector
             :param EmbeddingDistributor sent2vec_model
@@ -258,14 +259,14 @@ class KeyphraseExtractor:
             # Initialize standard parameters for EmbedRank
             regex, params = self.get_param('regex', 'a*n+', **params)
             candidate_selector, params = self.get_param('candidate_selector', CandidateSelector(embed_rank_candidate_selector), **params)
-            sent2vec_model = params.get('sent2vec_model')#self.get_param('sent2vec_model', '../word_embedding_models/english/sent2vec/wiki_bigrams.bin', **params)
+            sent2vec_model = params.get('sent2vec_model')
             draw_graphs, params = self.get_param('draw_graphs', False, **params)
 
             # Candidate Selection
             extractor.candidate_selection(**params)
 
             # Keyphrase Selection
-            extractor.candidate_weighting(sent2vec_model=sent2vec_model, filename=filename, draw_graphs=draw_graphs)
+            extractor.candidate_weighting(sent2vec_model=sent2vec_model, filename=filename, draw_graphs=draw_graphs, language=language)
         else:
             extractor.candidate_selection()
             extractor.candidate_weighting()

@@ -33,6 +33,7 @@ def key_cluster_candidate_selector(context, **kwargs):
 
 def embed_rank_candidate_selector(context, **kwargs):
     regex = kwargs.get('regex', 'a*n+')
+    language = kwargs.get('language', 'en')
 
     # translate the regex to the correct grammar, only works for simple grammars right now
     translated_regex = "NP:{"
@@ -43,7 +44,7 @@ def embed_rank_candidate_selector(context, **kwargs):
         else:
             translated_regex += char
     translated_regex += "}"
-    print("Using the following regex for candidate selection: %s" % translated_regex)
+    # print("Using the following regex for candidate selection: %s" % translated_regex)
 
     # select possible candidates
     context.candidates = defaultdict(Candidate)
@@ -51,7 +52,10 @@ def embed_rank_candidate_selector(context, **kwargs):
 
     # Save the tokenized unstemmed, unlowered form which is needed for sent2vec
     for stemmed_term, candidate in context.candidates.items():
-        candidate.tokenized_form = ' '.join(candidate.surface_forms[0])
+        if language == 'en':
+            candidate.tokenized_form = ' '.join(candidate.surface_forms[0]).lower()
+        else:
+            candidate.tokenized_form = ' '.join(candidate.surface_forms[0])
 
     return context.candidates.copy()
 

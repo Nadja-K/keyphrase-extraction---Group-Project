@@ -76,9 +76,9 @@ def heise_eval():
     extractor = KeyphraseExtractor()
     models = [
         # KeyCluster,
-        # EmbedRank,
+        EmbedRank,
         # TfIdf,
-        TopicRank,
+        # TopicRank,
         # SingleRank,
         # TextRank,
     ]
