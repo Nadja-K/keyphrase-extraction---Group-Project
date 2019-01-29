@@ -34,12 +34,6 @@ export default {
                 return [true, true];
             },
         },
-        boldActive: {
-            type: Array,
-            default() {
-                return [];
-            },
-        },
         highlightActive: {
             type: Array,
             default() {
@@ -98,7 +92,7 @@ export default {
             }
 
             if (styleOptions.bold) {
-                if (model[styleOptions.bold] && this.boldActive.includes(model[styleOptions.bold])) {
+                if (model[styleOptions.bold]) {
                     style = {
                         fontWeight: 900,
                     };

@@ -1,54 +1,62 @@
 <template>
     <div>
-        <v-card class="pa-4">
-            <h6 class="title mb-2">Common Properties</h6>
-            <v-checkbox
-                v-model="showCandidateKeyphrases"
-                label="candidate keyphrases"
-                hide-details
-                class="mt-1"
-            />
-            <v-checkbox
-                v-model="showSelectedKeyphrases"
-                label="selected keyphrases"
-                hide-details
-                class="mt-1"
-            />
-        </v-card>
-        <v-card class="pa-4 mt-3">
-            <!-- <h6 class="title mb-2">KeyCluster Properties</h6>
-            <v-checkbox
-                v-model="allSelected"
-                :indeterminate="allSelectedIndetermined"
-                label="select all"
-                hide-details
-                class="mt-1"
-            />
-            <v-divider />
-            <div :style="{overflowY:'scroll', maxHeight: '180px'}">
-                <v-checkbox v-for="clusterId in selectedRun.num_clusters"
-                    v-model="selectedClusters"
-                    :label="`cluster ${clusterId}`"
-                    hide-details
-                    class="mt-1"
-                    :color="`#${palette[clusterId]}`"
-                    :id="`cluster ${clusterId}`"
-                    :value="clusterId"
-                    :key="clusterId"
-                />
-            </div> -->
-            <PropertyList :items="items" :headers="headers" v-model="selectedClusters"/>
-        </v-card>
+        <v-expansion-panel @input="(expanded) => expandPanel(0, expanded)" :value="[ui.expandedPanels.includes(0)]" expand>
+            <v-expansion-panel-content>
+                <div slot="header" class="title">Common Properties</div>
+                <v-card class="px-4 pt-1 pb-4">
+                    <v-checkbox
+                        v-model="showCandidateKeyphrases"
+                        label="candidate keyphrases"
+                        hide-details
+                        class="mt-1"
+                    />
+                    <v-checkbox
+                        v-model="showSelectedKeyphrases"
+                        label="selected keyphrases"
+                        hide-details
+                        class="mt-1"
+                    />
+                </v-card>
+            </v-expansion-panel-content>
+        </v-expansion-panel>
+        <v-expansion-panel v-if="selectedRun.settings.model === 'KeyCluster'" @input="(expanded) => expandPanel(1, expanded)" :value="[ui.expandedPanels.includes(1)]" expand class="mt-3 settings-panel">
+            <v-expansion-panel-content>
+                <div slot="header" class="title">KeyCluster Properties</div>
+                <v-card class="px-3 pb-3">
+                    <PropertyList :items="clusters" :headers="headers" v-model="selectedClusters"/>
+                </v-card>
+            </v-expansion-panel-content>
+        </v-expansion-panel>
+        <v-expansion-panel @input="(expanded) => expandPanel(2, expanded)" :value="[ui.expandedPanels.includes(2)]" expand class="mt-3 settings-panel">
+            <v-expansion-panel-content class="settings-panel">
+                <div slot="header" class="title">Run Settings</div>
+                <v-card class="px-3 pb-3">
+                    <SettingsList :settings="this.selectedRun.settings" />
+                </v-card>
+            </v-expansion-panel-content>
+        </v-expansion-panel>
+        <v-expansion-panel @input="(expanded) => expandPanel(3, expanded)" :value="[ui.expandedPanels.includes(3)]" expand class="mt-3 settings-panel">
+            <v-expansion-panel-content class="settings-panel">
+                <div slot="header" class="title">Runs</div>
+                <v-card class="px-3 pb-3">
+                    <RunList />
+                </v-card>
+            </v-expansion-panel-content>
+        </v-expansion-panel>
     </div>
 </template>
 
 <script>
 import { mapActions, mapState, mapGetters } from 'vuex';
 import PropertyList from './PropertyList.vue';
+import SettingsList from './SettingsList.vue';
+import RunList from './RunList.vue';
 
 export default {
     components: {
         PropertyList,
+        SettingsList,
+        RunList,
     },
     computed: {
         ...mapState('document', [
@@ -86,22 +94,7 @@ export default {
                 this.setKeyClusterProperty({ selectedClusters: selectedIds });
             },
         },
-        allSelected: {
-            get() {
-                return this.allSelectedState;
-            },
-            set(value) {
-                let allClusters = [];
-                if (value && !this.allSelectedIndetermined) {
-                    allClusters = [...Array(this.selectedRun.num_clusters + 1).keys()].slice(1);
-                }
-                this.setKeyClusterProperty({ selectedClusters: allClusters });
-
-                this.allSelectedState = !this.allSelectedIndetermined;
-                this.allSelectedIndetermined = false;
-            },
-        },
-        items() {
+        clusters() {
             return [...Array(this.selectedRun.num_clusters + 1).keys()].slice(1).map(entry => ({
                 name: `cluster ${entry}`,
                 value: entry,
@@ -114,7 +107,7 @@ export default {
             allSelectedIndetermined: false,
             headers: [
                 {
-                    text: 'cluster',
+                    text: 'Cluster',
                     align: 'left',
                     sortable: false,
                 },
@@ -125,11 +118,43 @@ export default {
         ...mapActions('document/ui', [
             'setCommonProperty',
             'setKeyClusterProperty',
+            'setPanelExpanded',
         ]),
+        expandPanel(panel, expanded) {
+            this.setPanelExpanded({ panel, expanded: expanded[0] });
+        },
     },
 };
 </script>
 
 <style>
+.fixed-header th:after {
+    content:'';
+    position:absolute;
+    left: 0;
+    bottom: 0;
+    width:100%;
+    border-bottom: 1px solid rgba(0,0,0,0.12);
+}
 
+.fixed-header thead tr:first-child {
+    border: none !important;
+}
+
+.fixed-header th {
+    background-color: #fff; /* just for LIGHT THEME, change it to #474747 for DARK */
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.fixed-header tr.v-datatable__progress th {
+    top: 56px;
+    position: absolute;
+}
+
+.fixed-header .v-table__overflow {
+    overflow: auto;
+    height: 224px;
+}
 </style>
