@@ -5,7 +5,7 @@
     :items="items"
     select-all
     item-key="name"
-    class="elevation-1 d-inline-block"
+    class="fixed-header"
     hide-actions
   >
     <template slot="items" slot-scope="props">

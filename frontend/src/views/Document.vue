@@ -25,7 +25,9 @@ export default {
         this.fetchDocument(this.id);
     },
     watch: {
-        $route: 'fetchDocument',
+        $route() {
+            this.fetchDocument(this.id);
+        },
     },
     methods: {
         ...mapActions('document', [
