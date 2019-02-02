@@ -1,3 +1,4 @@
+from pandas import DataFrame
 from sklearn.metrics.pairwise import cosine_distances, cosine_similarity
 import numpy as np
 from pke.base import LoadFile
@@ -12,7 +13,7 @@ class EmbedRank(LoadFile):
         # Select candidate Keyphrases based on PoS-Tags with a regex
         candidate_selector.select_candidates(self, **kwargs)
 
-    def candidate_weighting(self, sent2vec_model, filename, draw_graphs=False, language='en'):
+    def candidate_weighting(self, sent2vec_model, filename, draw_graphs=False, language='en', document_similarity_data=None, document_similarity_new_candidate_constant=1.0):
         # Compute the document embedding based on only nouns and adjectives
         self._compute_document_embedding(sent2vec_model, language)
 
@@ -20,7 +21,7 @@ class EmbedRank(LoadFile):
         self._compute_phrase_embeddings(sent2vec_model)
 
         # Rank the candidate phrases according to their cosine distance to the document embedding
-        self._rank_candidates()
+        self._rank_candidates(document_similarity_data, document_similarity_new_candidate_constant)
 
         # Simple embedding visualization
         if draw_graphs is True:
@@ -57,10 +58,27 @@ class EmbedRank(LoadFile):
                 del self.candidates[term]
         self.phrase_embeddings = self.phrase_embeddings[valid_candidates_mask, :]
 
-    def _rank_candidates(self):
+    def _rank_candidates(self, document_similarity_data=None, document_similarity_new_candidate_constant=1.0):
         for index, candidate_tuple in enumerate(sorted(self.candidates.items())):
             term, candidate = candidate_tuple
             candidate_embedding = self.phrase_embeddings[index]
 
             # compute the cos distance/similarity
-            self.weights[term] = cosine_similarity(candidate_embedding.reshape(1, -1), self.doc_embedding.reshape(1, -1))[0][0]
+            self.weights[term] = (cosine_similarity(candidate_embedding.reshape(1, -1), self.doc_embedding.reshape(1, -1))[0][0])# + candidate_document_similarity_bias
+
+            # Add the document similarity bias based on the ranking of the term
+            # Candidates that are not found in the document similarity matrix are treated as special and receive a
+            # bias value of 1 [This might be changed and could be a hyperparameter] (very important for this document
+            # since they did not appear in any of the training documents)
+            if document_similarity_data is not None:
+                if candidate.tokenized_form in document_similarity_data.columns:
+                    candidate_column = document_similarity_data[candidate.tokenized_form]
+                    candidate_column = candidate_column.append(DataFrame({0: {'Current Document': self.weights[term]}}))
+                    candidate_column = candidate_column.rank(axis='index', ascending=False)
+                    candidate_document_similarity_bias = (candidate_column.at['Current Document', 0] / candidate_column.max())[0]
+                else:
+                    # print("Candidate '%s' not found in document similarity data." % candidate.tokenized_form)
+                    candidate_document_similarity_bias = document_similarity_new_candidate_constant
+
+                self.weights[term] = self.weights[term] * candidate_document_similarity_bias
+                # self.weights[term] = candidate_document_similarity_bias

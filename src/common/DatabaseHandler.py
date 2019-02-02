@@ -41,6 +41,8 @@ class DatabaseHandler:
             del(reformatted_settings['global_cooccurrence_matrix'])
         if 'sent2vec_model' in reformatted_settings.keys():
             del(reformatted_settings['sent2vec_model'])
+        if 'document_similarity_data' in reformatted_settings.keys():
+            del(reformatted_settings['document_similarity_data'])
 
         # Adjust the settings so that the information can be written to the database
         comp_funcs = []

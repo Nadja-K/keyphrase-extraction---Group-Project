@@ -59,6 +59,8 @@ kwargs = {
 
     ## EmbedRank
     'sent2vec_model': '../word_embedding_models/german/sent2vec/de_model.bin',
+    'document_similarity': True,
+    'document_similarity_new_candidate_constant': 1.0,
 
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
     # 'draw_graphs': True,

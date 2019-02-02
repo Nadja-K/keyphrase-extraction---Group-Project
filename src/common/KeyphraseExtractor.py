@@ -21,7 +21,7 @@ from common.Cluster import HierarchicalClustering
 from common.KeyphraseSelector import KeyphraseSelector
 from common.Cluster import euclid_dist
 from common.helper import calc_num_cluster, _load_word_embedding_model, \
-    _load_frequent_word_list, load_global_cooccurrence_matrix, collect_keyphrase_data
+    _load_frequent_word_list, load_global_cooccurrence_matrix, collect_keyphrase_data, load_document_similarity_data
 from common.DatabaseHandler import DatabaseHandler
 
 from eval.evaluation import Evaluator, stemmed_compare
@@ -254,19 +254,25 @@ class KeyphraseExtractor:
             :param str regex
             :param CandidateSelector candidate_selector
             :param EmbeddingDistributor sent2vec_model
-            :param bool draw_graphs            
+            :param bool draw_graphs  
+            :param DataFrame document_similarity_data     
+            :param float document_similarity_new_candidate_constant
             """
             # Initialize standard parameters for EmbedRank
             regex, params = self.get_param('regex', 'a*n+', **params)
             candidate_selector, params = self.get_param('candidate_selector', CandidateSelector(embed_rank_candidate_selector), **params)
-            sent2vec_model = params.get('sent2vec_model')
+            sent2vec_model = params.get('sent2vec_model', None)
             draw_graphs, params = self.get_param('draw_graphs', False, **params)
+            document_similarity_data = params.get('document_similarity_data', None)
+            document_similarity_new_candidate_constant, params = self.get_param('document_similarity_new_candidate_constant', 1.0, **params)
 
             # Candidate Selection
             extractor.candidate_selection(**params)
 
             # Keyphrase Selection
-            extractor.candidate_weighting(sent2vec_model=sent2vec_model, filename=filename, draw_graphs=draw_graphs, language=language)
+            extractor.candidate_weighting(sent2vec_model=sent2vec_model, filename=filename, draw_graphs=draw_graphs,
+                                          language=language, document_similarity_data=document_similarity_data,
+                                          document_similarity_new_candidate_constant=document_similarity_new_candidate_constant)
         else:
             extractor.candidate_selection()
             extractor.candidate_weighting()
@@ -374,6 +380,9 @@ class KeyphraseExtractor:
 
         # Load the global cooccurrence matrix if specified
         kwargs = load_global_cooccurrence_matrix(**kwargs)
+
+        # Load the document similarity data if specified
+        kwargs = load_document_similarity_data(input_data, **kwargs)
 
         # Load the sent2vec model
         kwargs.update({'sent2vec_model': EmbeddingDistributor(kwargs.get('sent2vec_model', '../word_embedding_models/english/sent2vec/wiki_bigrams.bin'))})

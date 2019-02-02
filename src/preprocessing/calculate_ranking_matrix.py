@@ -66,12 +66,12 @@ def main():
     normalization = 'stemming'
 
     # data to use (needs to be adapted for the database later) # FIXME
-    dataset = 'DUC'  # SemEval, Inspec, DUC, Heise
-    if dataset == 'SemEval':
+    dataset = 'SemEval-2010'  # SemEval-2010, Inspec, DUC-2001, Heise
+    if dataset == 'SemEval-2010':
         input_data = "../ake-datasets/datasets/SemEval-2010/train"
     elif dataset == 'Inspec':
         input_data = "../ake-datasets/datasets/Inspec/train"
-    elif dataset == 'DUC':
+    elif dataset == 'DUC-2001':
         input_data = "../ake-datasets/datasets/DUC-2001/test"
     else:
         input_data = None

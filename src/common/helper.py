@@ -20,7 +20,8 @@ import matplotlib.lines as mlines
 import os
 import gzip
 import networkx as nx
-import re
+from pathlib import Path
+import pandas as pd
 
 from common.ClusterFeatureCalculator import CooccurrenceClusterFeature, PPMIClusterFeature, WordEmbeddingsClusterFeature
 from common.DatabaseHandler import DatabaseHandler
@@ -351,6 +352,22 @@ def _compute_document_cooccurrence(output_file, doc_name, doc, stoplist, n_grams
                             co_occurrences[words[pos]][word] = 1
 
         return word_counts, co_occurrences, num_words_total
+
+
+def load_document_similarity_data(input_data, **kwargs):
+    load_document_similarity = kwargs.get('document_similarity', False)
+
+    if load_document_similarity is True:
+        dataset = 'Heise'
+        if input_data is not None:
+            dataset = Path(input_data).parts[-2]
+
+        print("Loading document similarity data for the %s data." % dataset)
+        similarity_data = pd.read_pickle(Path("data/document_similarity/" + dataset + "_similarity_dataframe"))
+        kwargs['document_similarity_data'] = similarity_data
+
+    return kwargs
+
 
 
 def load_global_cooccurrence_matrix(**kwargs):
