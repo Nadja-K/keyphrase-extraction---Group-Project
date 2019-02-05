@@ -396,30 +396,29 @@ class KeyphraseExtractor:
         # Load the sent2vec model
         kwargs.update({'sent2vec_model': EmbeddingDistributor(kwargs.get('sent2vec_model', '../word_embedding_models/english/sent2vec/wiki_bigrams.bin'))})
 
-        if input_data is None or references is None:
+        # if input_data is None or references is None:
+        if references is None and input_data is not None:
             db_handler = DatabaseHandler()
-            # Get the total amount of documents from the database if no specific amount was set in kwargs
-            num_documents = kwargs.get('num_documents', 0)
-            if num_documents == 0:
-                num_documents = db_handler.get_num_documents()
 
-            # Load the specified number of documents in batches
-            print("No input directory or reference list set, loading %s documents from the database..." % num_documents)
-            batch_size = kwargs.get('batch_size', 100)
-            while (num_documents > 0):
-                documents, references = db_handler.load_newest_documents_from_db(model, **kwargs)
-                for key, doc in documents.items():
-                    self._evaluate_document(model, doc, references, evaluators, print_document_scores=print_document_scores, **kwargs)
-                    num_documents_evaluated += 1
-                    self._calc_avg_scores(evaluators, num_documents_evaluated, print_document_scores=print_document_scores)
-                num_documents -= batch_size
-                print("Done with batch.")
-        else:
+            print("Loading documents from the database for the %s dataset." % input_data)
+            documents, references = db_handler.load_split_from_db(model, dataset=input_data, **kwargs)
+            for key, doc in documents.items():
+                self._evaluate_document(model, doc, references, evaluators, print_document_scores=print_document_scores,
+                                        **kwargs)
+                num_documents_evaluated += 1
+                self._calc_avg_scores(evaluators, num_documents_evaluated, print_document_scores=print_document_scores)
+        elif references is not None and input_data is not None:
+            print(references)
+            print(input_data)
             for file in glob.glob(input_data + '/*'):
                 evaluators = self._evaluate_document(model, file, references, evaluators,
                                                      print_document_scores=print_document_scores, **kwargs)
                 num_documents_evaluated += 1
                 self._calc_avg_scores(evaluators, num_documents_evaluated, print_document_scores=print_document_scores)
+        else:
+            raise Exception("An error occured while trying to load the data. Make sure input_data and references was set "
+                            "accordingly when loading a dataset from disk or that input_data was set to the name of the"
+                            "corresponding dataset if the data is to be loaded from the database.")
 
         return self._calc_avg_scores(evaluators, num_documents_evaluated, print_document_scores=False)
 

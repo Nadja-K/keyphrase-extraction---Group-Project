@@ -66,8 +66,9 @@ kwargs = {
     # 'draw_graphs': True,
     # 'print_document_scores': False,
 
-    'num_documents': 200,
-    'batch_size': 100,
+    'split': 'train',
+    # 'num_documents': 200,
+    # 'batch_size': 100,
     'reference_table': 'stemmed_filtered_stemmed',
     # 'table': 'pos_tags',
     'write_to_db': False
@@ -93,7 +94,7 @@ def heise_eval():
 
     for m in models:
         print("Computing the F-Score for the Heise Dataset with {}".format(m))
-        evaluators = extractor.calculate_model_f_score(m, **kwargs)
+        evaluators = extractor.calculate_model_f_score(m, input_data='heise', **kwargs)
         print("\n\n")
         for key, evaluator_data in evaluators.items():
             macro_precision = evaluator_data['macro_precision']

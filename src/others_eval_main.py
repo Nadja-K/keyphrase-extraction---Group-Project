@@ -61,9 +61,9 @@ kwargs = {
 
     ## EmbedRank
     'sent2vec_model': '../word_embedding_models/english/sent2vec/wiki_bigrams.bin',
-    'document_similarity': True,
+    'document_similarity': False,
     'document_similarity_new_candidate_constant': 1.0,
-    'global_covariance': True,
+    'global_covariance': False,
     'global_covariance_weights': (4.0, 0.1),
 
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
@@ -82,7 +82,7 @@ def custom_testing():
     # SemEval-2010
     train_folder = "../ake-datasets/datasets/SemEval-2010/train"
     test_folder = "../ake-datasets/datasets/SemEval-2010/test"
-    reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
+    # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
 
     # Only needs to be done once for a dataset
     # print("Computing the global cooccurrence matrix.")

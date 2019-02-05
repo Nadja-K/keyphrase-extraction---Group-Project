@@ -91,7 +91,8 @@ class DatabaseHandler:
         extracted_documents = dict()
         extracted_documents_references = dict()
         with r.connect(self._host, self._port, db='keyphrase_extraction') as conn:
-            split_ids = r.table('splits').filter({'dataset': dataset}).pluck(split)
+            split_ids = r.table('splits').filter({'dataset': dataset}).pluck(split).run(conn)
+            split_ids = [str(x) for x in list(split_ids.items[0].values())[0]]
 
             cursor = r.table('references').get_all(r.args(split_ids)).pluck(reference_table, 'id').eq_join('id', r.table(table)).zip().run(conn)
 
