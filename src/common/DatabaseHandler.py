@@ -82,8 +82,66 @@ class DatabaseHandler:
                 cursor = r.table('document_runs').update(data).run(conn)
                 print("ID found in table, updating entry with new runs.")
 
+    def load_split_from_db(self, model, dataset, **kwargs):
+        split = kwargs.get('split', 'dev')
+        table = kwargs.get('table', 'pos_tags')
+        reference_table = kwargs.get('reference_table', 'exact_filtered_stemmed')
+        dataset = dataset.lower()
 
-    def load_documents_from_db(self, model, **kwargs):
+        extracted_documents = dict()
+        extracted_documents_references = dict()
+        with r.connect(self._host, self._port, db='keyphrase_extraction') as conn:
+            split_ids = r.table('splits').filter({'dataset': dataset}).pluck(split)
+
+            cursor = r.table('references').get_all(r.args(split_ids)).pluck(reference_table, 'id').eq_join('id', r.table(table)).zip().run(conn)
+
+            for document in cursor:
+                extractor, document = self.generate_document_object(model, document, **kwargs)
+
+                extracted_documents[document['id']] = {
+                    'document': extractor,
+                    'id': document['id']
+                }
+                extracted_documents_references[document['id']] = document[reference_table]
+                self._current_index += 1
+
+            return extracted_documents, extracted_documents_references
+
+    def generate_document_object(self, model, document, **kwargs):
+        doc = Document.from_sentences(document['sentences'], **kwargs)
+        doc.is_corenlp_file = True
+        extractor = model()
+        extractor.input_file = doc.input_file
+
+        # set the language of the document
+        extractor.language = kwargs.get('language', 'en')
+
+        # set the sentences
+        extractor.sentences = doc.sentences
+
+        # initialize the stoplist
+        extractor.stoplist = stopwords.words(pke.base.ISO_to_language[extractor.language])
+
+        # word normalization
+        extractor.normalization = kwargs.get('normalization', 'stemming')
+        if extractor.normalization == 'stemming':
+            extractor.apply_stemming()
+        elif extractor.normalization is None:
+            for i, sentence in enumerate(extractor.sentences):
+                extractor.sentences[i].stems = sentence.words
+
+        # lowercase the normalized words
+        for i, sentence in enumerate(extractor.sentences):
+            extractor.sentences[i].stems = [w.lower() for w in sentence.stems]
+
+        # POS normalization
+        if getattr(doc, 'is_corenlp_file', False):
+            extractor.normalize_pos_tags()
+            extractor.unescape_punctuation_marks()
+
+        return extractor, document
+
+    def load_newest_documents_from_db(self, model, **kwargs):
         """
         Loads a set number of pre-parsed documents from the database and returns them as KeyCluster instances.
 
@@ -105,36 +163,7 @@ class DatabaseHandler:
                 'id', r.table(table), ordered=True).zip().run(conn)
             # cursor = [r.table('pos_tags').get("2730613").merge(r.table('references').get("2730613")).run(conn)]
             for document in cursor:
-                doc = Document.from_sentences(document['sentences'], **kwargs)
-                doc.is_corenlp_file = True
-                extractor = model()
-                extractor.input_file = doc.input_file
-
-                # set the language of the document
-                extractor.language = kwargs.get('language', 'en')
-
-                # set the sentences
-                extractor.sentences = doc.sentences
-
-                # initialize the stoplist
-                extractor.stoplist = stopwords.words(pke.base.ISO_to_language[extractor.language])
-
-                # word normalization
-                extractor.normalization = kwargs.get('normalization', 'stemming')
-                if extractor.normalization == 'stemming':
-                    extractor.apply_stemming()
-                elif extractor.normalization is None:
-                    for i, sentence in enumerate(extractor.sentences):
-                        extractor.sentences[i].stems = sentence.words
-
-                # lowercase the normalized words
-                for i, sentence in enumerate(extractor.sentences):
-                    extractor.sentences[i].stems = [w.lower() for w in sentence.stems]
-
-                # POS normalization
-                if getattr(doc, 'is_corenlp_file', False):
-                    extractor.normalize_pos_tags()
-                    extractor.unescape_punctuation_marks()
+                extractor, document = self.generate_document_object(model, document, **kwargs)
 
                 extracted_documents[document['id']] = {
                     'document': extractor,

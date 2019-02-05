@@ -59,7 +59,7 @@ kwargs = {
 
     ## EmbedRank
     'sent2vec_model': '../word_embedding_models/german/sent2vec/de_model.bin',
-    'document_similarity': True,
+    'document_similarity': False,
     'document_similarity_new_candidate_constant': 1.0,
 
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
@@ -70,7 +70,7 @@ kwargs = {
     'batch_size': 100,
     'reference_table': 'stemmed_filtered_stemmed',
     # 'table': 'pos_tags',
-    'write_to_db': True
+    'write_to_db': False
 }
 
 

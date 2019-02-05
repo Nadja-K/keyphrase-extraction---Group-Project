@@ -407,7 +407,7 @@ class KeyphraseExtractor:
             print("No input directory or reference list set, loading %s documents from the database..." % num_documents)
             batch_size = kwargs.get('batch_size', 100)
             while (num_documents > 0):
-                documents, references = db_handler.load_documents_from_db(model, **kwargs)
+                documents, references = db_handler.load_newest_documents_from_db(model, **kwargs)
                 for key, doc in documents.items():
                     self._evaluate_document(model, doc, references, evaluators, print_document_scores=print_document_scores, **kwargs)
                     num_documents_evaluated += 1
