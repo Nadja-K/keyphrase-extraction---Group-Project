@@ -369,6 +369,22 @@ def load_document_similarity_data(input_data, **kwargs):
     return kwargs
 
 
+def load_global_covariance_matrix(input_data, **kwargs):
+    load_global_covariance = kwargs.get('global_covariance', False)
+
+    if load_global_covariance:
+        dataset = 'Heise'
+        if input_data:
+            dataset = Path(input_data).parts[-2]
+
+        print('Loading global covariance matrix data for the %s data.' % dataset)
+        global_covariance_matrix = np.load(f'../data/{dataset}_inv_covariance.npy')
+        global_embedding_centroid = np.load(f'../data/{dataset}_inv_covariance_centroid.npy').reshape(1, -1)
+        kwargs['global_covariance_matrix'] = global_covariance_matrix
+        kwargs['global_embedding_centroid'] = global_embedding_centroid
+
+    return kwargs
+
 
 def load_global_cooccurrence_matrix(**kwargs):
     global_cooccurrence_matrix_path = kwargs.get('global_cooccurrence_matrix', None)

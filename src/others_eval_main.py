@@ -63,6 +63,8 @@ kwargs = {
     'sent2vec_model': '../word_embedding_models/english/sent2vec/wiki_bigrams.bin',
     'document_similarity': True,
     'document_similarity_new_candidate_constant': 1.0,
+    'global_covariance': True,
+    'global_covariance_weights': (4.0, 0.1),
 
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
     # 'draw_graphs': True,

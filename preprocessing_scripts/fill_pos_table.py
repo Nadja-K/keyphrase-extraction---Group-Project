@@ -28,7 +28,7 @@ def parse_xml(document_path):
         })
         sentences[-1].update(sentence.attrib)
 
-    filename = os.path.basenme(document_path)
+    filename = os.path.basename(document_path)
     id = os.path.splitext(filename)[0]
 
     parsed_document = {'id': id, 'sentences': sentences}

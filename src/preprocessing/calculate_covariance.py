@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sp
 import glob
 from common.EmbeddingDistributor import EmbeddingDistributor
 from methods.EmbedRank import EmbedRank
@@ -17,6 +18,8 @@ normalization = 'stemming'
 # train_folder = "../ake-datasets/datasets/Inspec/train"
 train_folder = "../ake-datasets/datasets/DUC-2001/test"
 output_file = 'DUC-2001_covariance'
+
+centroid_output_file = f'{output_file}_centroid'
 
 sent2vec_model = EmbeddingDistributor(sent2vec_model_name)
 candidate_selector = CandidateSelector(embed_rank_candidate_selector)
@@ -40,7 +43,12 @@ valid_candidates_mask = ~np.all(candidate_embeddings == 0, axis=1)
 candidate_embeddings = candidate_embeddings[valid_candidates_mask, :]
 print(candidate_embeddings.shape)
 
-covariance_matrix = np.cov(candidate_embeddings.T)
-print(covariance_matrix.shape)
+covariance_matrix = sp.cov(candidate_embeddings.T)
+inverse_covariance_matrix = sp.linalg.inv(covariance_matrix)
+print(inverse_covariance_matrix.shape)
+
+centroid = candidate_embeddings.mean(axis=0)
+print(centroid)
 
 np.save(output_file, covariance_matrix)
+np.save(centroid_output_file, centroid)

@@ -1,9 +1,12 @@
 from pandas import DataFrame
 from sklearn.metrics.pairwise import cosine_distances, cosine_similarity
+from scipy.spatial.distance import cdist
+
 import numpy as np
 from pke.base import LoadFile
 from common.helper import _create_simple_embedding_visualization
 
+dist_list = []
 
 class EmbedRank(LoadFile):
     def __init__(self):
@@ -13,7 +16,7 @@ class EmbedRank(LoadFile):
         # Select candidate Keyphrases based on PoS-Tags with a regex
         candidate_selector.select_candidates(self, **kwargs)
 
-    def candidate_weighting(self, sent2vec_model, filename, draw_graphs=False, language='en', document_similarity_data=None, document_similarity_new_candidate_constant=1.0):
+    def candidate_weighting(self, sent2vec_model, filename, draw_graphs=False, language='en', document_similarity_data=None, document_similarity_new_candidate_constant=1.0, global_covariance_matrix=None, global_embedding_centroid=None, global_covariance_weights=None):
         # Compute the document embedding based on only nouns and adjectives
         self._compute_document_embedding(sent2vec_model, language)
 
@@ -21,7 +24,7 @@ class EmbedRank(LoadFile):
         self._compute_phrase_embeddings(sent2vec_model)
 
         # Rank the candidate phrases according to their cosine distance to the document embedding
-        self._rank_candidates(document_similarity_data, document_similarity_new_candidate_constant)
+        self._rank_candidates(document_similarity_data, document_similarity_new_candidate_constant, global_covariance_matrix, global_embedding_centroid, global_covariance_weights)
 
         # Simple embedding visualization
         if draw_graphs is True:
@@ -58,7 +61,7 @@ class EmbedRank(LoadFile):
                 del self.candidates[term]
         self.phrase_embeddings = self.phrase_embeddings[valid_candidates_mask, :]
 
-    def _rank_candidates(self, document_similarity_data=None, document_similarity_new_candidate_constant=1.0):
+    def _rank_candidates(self, document_similarity_data=None, document_similarity_new_candidate_constant=1.0, global_covariance_matrix=None, global_embedding_centroid=None, global_covariance_weights=None):
         for index, candidate_tuple in enumerate(sorted(self.candidates.items())):
             term, candidate = candidate_tuple
             candidate_embedding = self.phrase_embeddings[index]
@@ -82,3 +85,12 @@ class EmbedRank(LoadFile):
 
                 self.weights[term] = self.weights[term] * candidate_document_similarity_bias
                 # self.weights[term] = candidate_document_similarity_bias
+
+            if global_covariance_matrix is not None:
+                mahalanobis_dist = cdist(candidate_embedding.reshape(1, -1), global_embedding_centroid, 'mahalanobis', VI=global_covariance_matrix)[0][0]
+                norm_mahalanobis_dist = mahalanobis_dist/31.443647329673244
+                # dist_list.append(mahalanobis_dist)
+                # dist = np.array(dist_list)
+                # print(dist.std(), dist.mean(), dist.min(), dist.max())
+
+                self.weights[term] = self.weights[term] * global_covariance_weights[0] + (1-norm_mahalanobis_dist) * global_covariance_weights[1]
