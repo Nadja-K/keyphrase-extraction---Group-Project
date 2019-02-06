@@ -89,23 +89,32 @@ def custom_testing():
     # compute_document_cooccurrence(test_folder, "semeval_out.cooccurrence", **kwargs)
     # compute_global_cooccurrence(test_folder, "semeval_out.cooccurrence", **kwargs)
 
+
     # Inspec
     train_folder = "../ake-datasets/datasets/Inspec/train"
-    # test_folder = "../ake-datasets/datasets/Inspec/dev"
-    test_folder = "../ake-datasets/datasets/Inspec/test"
-    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
-    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
+
+    test_folder = "../ake-datasets/datasets/Inspec/dev"
+    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+    reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+
+    # test_folder = "../ake-datasets/datasets/Inspec/test"
+    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
+    # reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
 
     # Only needs to be done once for a dataset
     # print("Computing the global cooccurrence matrix.")
     # compute_global_cooccurrence("inspec_out.cooccurrence", input_dir=test_folder, **kwargs)
+
 
     # DUC-2001
     # train_folder = "../ake-datasets/datasets/DUC-2001/train"
     # test_folder = "../ake-datasets/datasets/DUC-2001/test"
     # reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
 
-    reference_stemmed = pke.utils.load_references(reference_stemmed_file)
+    if kwargs.get('normalization', 'stemming') == 'stemming':
+        reference = pke.utils.load_references(reference_stemmed_file)
+    else:
+        reference = pke.utils.load_references(reference_unstemmed_file)
     extractor = KeyphraseExtractor()
     models = [
         # KeyCluster,
@@ -128,7 +137,7 @@ def custom_testing():
                 print("Frequency file calculated for current dataset.")
 
         print("Computing the F-Score for the Inspec Dataset with {}".format(m))
-        evaluators = extractor.calculate_model_f_score(m, input_data=test_folder, references=reference_stemmed, **kwargs)
+        evaluators = extractor.calculate_model_f_score(m, input_data=test_folder, references=reference, **kwargs)
         print("\n\n")
         for key, evaluator_data in evaluators.items():
             macro_precision = evaluator_data['macro_precision']
@@ -159,17 +168,25 @@ def extract_keyphrases_from_raw_text():
         print(keyphrases)
 
 def collect_dataset_statistics():
-    # some dataset statistic collection, can be removed
-    train_folder = "../ake-datasets/datasets/DUC-2001/train"
-    test_folder = "../ake-datasets/datasets/DUC-2001/test"
-    reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
-    #
-    # train_folder = "../ake-datasets/datasets/Inspec/train"
-    # test_folder = "../ake-datasets/datasets/Inspec/dev"
-    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+    # some dataset statistic collection
+    # folder = "../ake-datasets/datasets/DUC-2001/test"
+    # reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
+    # reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.json"
 
-    # train_folder = "../ake-datasets/datasets/SemEval-2010/train"
-    # test_folder = "../ake-datasets/datasets/SemEval-2010/test"
+    # folder = "../ake-datasets/datasets/Inspec/train"
+    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/train.uncontr.stem.json"
+    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/train.uncontr.json"
+    # folder = "../ake-datasets/datasets/Inspec/dev"
+    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.json"
+    folder = "../ake-datasets/datasets/Inspec/test"
+    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
+    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
+
+    # folder = "../ake-datasets/datasets/SemEval-2010/train"
+    # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/train.combined.stem.json"
+    # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/train.combined.json"
+    # folder = "../ake-datasets/datasets/SemEval-2010/test"
     # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
 
     keyphrase_extractor = KeyphraseExtractor()
@@ -180,7 +197,7 @@ def collect_dataset_statistics():
     num_keyphrases_not_found = 0
     docs = 0
     keyphrase_length = 0
-    for file in glob.glob(test_folder + '/*'):
+    for file in glob.glob(folder + '/*'):
         docs += 1
         filename = os.path.splitext(os.path.basename(file))[0]
         extractor = KeyCluster()
@@ -192,24 +209,46 @@ def collect_dataset_statistics():
             keyphrase_length += len(keyphrase.split(' '))
             tmp = False
             for sent in extractor.sentences:
-                # if keyphrase_extractor._is_exact_match(keyphrase, ' '.join(sent.stems)):
-                if keyphrase in ' '.join(sent.stems):
+                # keyphrase_list = [x.lower() for x in keyphrase.split(' ')]
+                # sent_list = [x.lower() for x in sent.stems]
+                #
+                # for i in range(len(sent_list) - len(keyphrase_list) - 1):
+                #     found = True
+                #     for j, keyword in enumerate(keyphrase_list):
+                #         if keyword in sent_list[i+j]:
+                #             continue
+                #         else:
+                #             found = False
+                #             break
+                #
+                #     if found == True:
+                #         num_keyphrases_found += 1
+                #         tmp = True
+                #         break
+                #
+                # if tmp is True:
+                #     break
+
+                if keyphrase_extractor._is_exact_match(keyphrase.lower(), ' '.join(sent.words).lower()):
+                # if keyphrase in ' '.join(sent.stems):
                     num_keyphrases_found +=1
                     tmp = True
                     break
             if tmp is False:
                 num_keyphrases_not_found += 1
                 print(keyphrase, file)
-    print(num_keyphrases_found)
-    print(num_keyphrases_not_found)
-    print(len(unique_keyphrases))
-    print(docs)
+    print("#Keyphrases found in text: %s" % num_keyphrases_found)
+    print("#Keyphrases not found in text: %s" % num_keyphrases_not_found)
+    print("#Unique Keyphrases: %s" % len(unique_keyphrases))
+    print("#Documents: %s" % docs)
     x = 0
     for reference in reference_stemmed.values():
         x += len(reference)
-    print(x)
+    print("#Keyphrases total: %s" % x)
     keyphrase_length = keyphrase_length / x
-    print(keyphrase_length)
+    print("Average keyphrase length: %s" % keyphrase_length)
+    print("Keyphrases found in text: %s" % ((100/x)*num_keyphrases_found))
+    print("Avg #Keyphrases: %s" % (x/docs))
 
 
 def main():
@@ -218,6 +257,7 @@ def main():
     pke.base.ISO_to_language['de'] = 'german'
 
     custom_testing()
+    # collect_dataset_statistics()
     # extract_keyphrases_from_raw_text()
 
 if __name__ == '__main__':
