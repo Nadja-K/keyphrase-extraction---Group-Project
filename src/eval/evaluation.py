@@ -217,7 +217,7 @@ def _calculate_keyphrase_iou(keywords1, keywords2):
         phrase_scores = []
         for t in keywords2:
             overlap = len(set(t_.split(' ')) & set(t.split(' ')))
-            union = len(t_.split(' ')) + len(t.split(' ')) - overlap
+            union = len(set(t_.split(' '))) + len(set(t.split(' '))) - overlap
             iou = overlap / union
             phrase_scores.append(iou)
         scores[t_] = max(phrase_scores)

@@ -93,13 +93,13 @@ def custom_testing():
     # Inspec
     train_folder = "../ake-datasets/datasets/Inspec/train"
 
-    test_folder = "../ake-datasets/datasets/Inspec/dev"
-    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
-    reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+    # test_folder = "../ake-datasets/datasets/Inspec/dev"
+    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+    # reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
 
-    # test_folder = "../ake-datasets/datasets/Inspec/test"
-    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
-    # reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
+    test_folder = "../ake-datasets/datasets/Inspec/test"
+    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
+    reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
 
     # Only needs to be done once for a dataset
     # print("Computing the global cooccurrence matrix.")
@@ -209,6 +209,20 @@ def collect_dataset_statistics():
             keyphrase_length += len(keyphrase.split(' '))
             tmp = False
             for sent in extractor.sentences:
+                # keyphrase_list = [x.lower() for x in keyphrase.split(' ')]
+                # sent_list = [x.lower() for x in sent.stems]
+                #
+                # for i in range(len(sent_list) - len(keyphrase_list) - 1):
+                #     comp_res = stemmed_compare([' '.join(sent_list[i:i+len(keyphrase_list)]).lower()], [keyphrase])
+                #     if(comp_res.tp >= 1):
+                #         # print(keyphrase, sent_list[i:i+len(keyphrase_list)])
+                #         num_keyphrases_found +=1
+                #         tmp = True
+                #         break
+                #
+                # if tmp is True:
+                #     break
+
                 # keyphrase_list = [x.lower() for x in keyphrase.split(' ')]
                 # sent_list = [x.lower() for x in sent.stems]
                 #
