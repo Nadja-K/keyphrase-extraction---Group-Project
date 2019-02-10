@@ -4,6 +4,8 @@ import pke
 from pke.unsupervised import (
     TfIdf, SingleRank, TextRank, TopicRank, MultipartiteRank
 )
+
+from common.CandidateSelector import CandidateSelector, key_cluster_candidate_selector
 from methods.KeyCluster import KeyCluster
 from methods.EmbedRank import EmbedRank
 
@@ -11,20 +13,20 @@ from common.KeyphraseExtractor import KeyphraseExtractor
 
 from eval.evaluation import stemmed_wordwise_phrase_compare, stemmed_compare
 
-from common.helper import custom_normalize_POS_tags, compute_df
+from common.helper import custom_normalize_POS_tags, compute_df, compute_global_cooccurrence
 
 pke.base.ISO_to_language['de'] = 'german'
 pke.LoadFile.normalize_pos_tags = custom_normalize_POS_tags
 
 
 kwargs = {
-    # 'language': 'en',
+    'language': 'en',
     'normalization': "stemming",
-    'n_keyphrases': 10,
+    # 'n_keyphrases': 15,
     # 'redundancy_removal': ,
     # 'n_grams': 1,
     # 'stoplist': ,
-    # 'frequency_file': '../ake-datasets/datasets/SemEval-2010/df_counts.tsv.gz',
+    # 'frequency_file': 'data/document_frequency/semEval_train_df_counts.tsv.gz',#'../ake-datasets/datasets/SemEval-2010/df_counts.tsv.gz',
     # 'window': 2,
     # 'pos': ,
     # 'top_percent': 1.0,
@@ -42,18 +44,18 @@ kwargs = {
     # 'sigma': ,
 
     ## KeyCluster
-    # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
+    'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
     # 'cluster_feature_calculator': WordEmbeddingsClusterFeature,#PPMIClusterFeature,
     # word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
     # 'global_cooccurrence_matrix': 'inspec_out.cooccurrence',#'semeval_out.cooccurrence',
     # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
     # 'regex': '',
-    # 'num_clusters': 20,
+    # 'num_clusters': 5,#20,
     # 'cluster_calc': ,
     # 'factor': 2/3,
-    # 'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',
-    # 'min_word_count': 1000,
+    'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',
+    'min_word_count': 1000,
     # 'frequent_word_list': ['test'],
     # 'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',
     # 'word_embedding_model':
@@ -62,13 +64,14 @@ kwargs = {
     ## EmbedRank
     'sent2vec_model': '../word_embedding_models/english/sent2vec/wiki_bigrams.bin',
     'document_similarity': False,
-    'document_similarity_new_candidate_constant': 1.0,
+    # 'document_similarity_new_candidate_constant': 1.0,
+    # 'document_similarity_weights': (1.0, 1.0),
     'global_covariance': False,
-    'global_covariance_weights': (4.0, 0.1),
+    # 'global_covariance_weights': (4.0, 0.1),
 
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
     # 'draw_graphs': True,
-    # 'print_document_scores': False,
+    'print_document_scores': False,
 
     # 'num_documents': 200,
     # 'batch_size': 100,
@@ -80,36 +83,42 @@ kwargs = {
 
 def custom_testing():
     # SemEval-2010
-    train_folder = "../ake-datasets/datasets/SemEval-2010/train"
-    test_folder = "../ake-datasets/datasets/SemEval-2010/test"
+    # train_folder = "../ake-datasets/datasets/SemEval-2010/train"
+    # test_folder = "../ake-datasets/datasets/SemEval-2010/test"
     # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
 
     # Only needs to be done once for a dataset
     # print("Computing the global cooccurrence matrix.")
-    # compute_document_cooccurrence(test_folder, "semeval_out.cooccurrence", **kwargs)
-    # compute_global_cooccurrence(test_folder, "semeval_out.cooccurrence", **kwargs)
+    # compute_global_cooccurrence("semEval_train.cooccurrence", input_dir=train_folder, **kwargs)
+    # compute_df(train_folder, "semEval_train_df_counts.tsv.gz", extension="xml")
 
 
     # Inspec
-    train_folder = "../ake-datasets/datasets/Inspec/train"
-
+    # train_folder = "../ake-datasets/datasets/Inspec/train"
     # test_folder = "../ake-datasets/datasets/Inspec/dev"
     # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
     # reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
 
-    test_folder = "../ake-datasets/datasets/Inspec/test"
-    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
-    reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
+    # test_folder = "../ake-datasets/datasets/Inspec/test"
+    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
+    # reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
 
     # Only needs to be done once for a dataset
     # print("Computing the global cooccurrence matrix.")
-    # compute_global_cooccurrence("inspec_out.cooccurrence", input_dir=test_folder, **kwargs)
+    # compute_global_cooccurrence("inspec_train.cooccurrence", input_dir=train_folder, **kwargs)
+    # compute_df(train_folder, "inspec_train_df_counts.tsv.gz", extension="xml")
 
 
     # DUC-2001
-    # train_folder = "../ake-datasets/datasets/DUC-2001/train"
-    # test_folder = "../ake-datasets/datasets/DUC-2001/test"
-    # reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
+    train_folder = "../ake-datasets/datasets/DUC-2001/test"
+    test_folder = "../ake-datasets/datasets/DUC-2001/test"
+    reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
+
+    # Only needs to be done once for a dataset
+    # print("Computing the global cooccurrence matrix.")
+    # compute_global_cooccurrence("duc_test.cooccurrence", input_dir=train_folder, **kwargs)
+    # compute_df(train_folder, "duc_test_df_counts.tsv.gz", extension="xml")
+
 
     if kwargs.get('normalization', 'stemming') == 'stemming':
         reference = pke.utils.load_references(reference_stemmed_file)
@@ -117,12 +126,12 @@ def custom_testing():
         reference = pke.utils.load_references(reference_unstemmed_file)
     extractor = KeyphraseExtractor()
     models = [
-        # KeyCluster,
-        EmbedRank,
+        KeyCluster,
+        # EmbedRank,
         # TfIdf,
-        # TopicRank,
-        # SingleRank,
         # TextRank,
+        # SingleRank,
+        # TopicRank,
         # MultipartiteRank,
         # KPMiner
     ]
@@ -136,7 +145,7 @@ def custom_testing():
                 kwargs['frequency_file'] = output_name
                 print("Frequency file calculated for current dataset.")
 
-        print("Computing the F-Score for the Inspec Dataset with {}".format(m))
+        print("Computing the F-Score for the current Dataset with {}".format(m))
         evaluators = extractor.calculate_model_f_score(m, input_data=test_folder, references=reference, **kwargs)
         print("\n\n")
         for key, evaluator_data in evaluators.items():

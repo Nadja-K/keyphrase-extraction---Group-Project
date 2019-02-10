@@ -264,6 +264,7 @@ class KeyphraseExtractor:
             sent2vec_model = params.get('sent2vec_model', None)
             draw_graphs, params = self.get_param('draw_graphs', False, **params)
             document_similarity_data = params.get('document_similarity_data', None)
+            document_similarity_weights = params.get('document_similarity_weights', None)
             document_similarity_new_candidate_constant, params = self.get_param('document_similarity_new_candidate_constant', 1.0, **params)
             global_covariance_matrix = params.get('global_covariance_matrix', None)
             global_embedding_centroid = params.get('global_embedding_centroid', None)
@@ -276,6 +277,7 @@ class KeyphraseExtractor:
             extractor.candidate_weighting(sent2vec_model=sent2vec_model, filename=filename, draw_graphs=draw_graphs,
                                           language=language, document_similarity_data=document_similarity_data,
                                           document_similarity_new_candidate_constant=document_similarity_new_candidate_constant,
+                                          document_similarity_weights=document_similarity_weights,
                                           global_covariance_matrix=global_covariance_matrix,
                                           global_embedding_centroid=global_embedding_centroid,
                                           global_covariance_weights=global_covariance_weights)
@@ -290,6 +292,7 @@ class KeyphraseExtractor:
             factor, params = self.get_param('factor', 1, **params)
             n_keyphrases = int(n_keyphrases * factor)
 
+        print(params['num_clusters'], n_keyphrases)
         return extractor.get_n_best(n=n_keyphrases, redundancy_removal=redundancy_removal, stemming=(normalization == 'stemming')), extractor, params
 
     def _evaluate_document(self, model, input_document, references, evaluators, print_document_scores=True, **kwargs):
@@ -408,8 +411,6 @@ class KeyphraseExtractor:
                 num_documents_evaluated += 1
                 self._calc_avg_scores(evaluators, num_documents_evaluated, print_document_scores=print_document_scores)
         elif references is not None and input_data is not None:
-            print(references)
-            print(input_data)
             for file in glob.glob(input_data + '/*'):
                 evaluators = self._evaluate_document(model, file, references, evaluators,
                                                      print_document_scores=print_document_scores, **kwargs)

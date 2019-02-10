@@ -16,7 +16,7 @@ class EmbedRank(LoadFile):
         # Select candidate Keyphrases based on PoS-Tags with a regex
         candidate_selector.select_candidates(self, **kwargs)
 
-    def candidate_weighting(self, sent2vec_model, filename, draw_graphs=False, language='en', document_similarity_data=None, document_similarity_new_candidate_constant=1.0, global_covariance_matrix=None, global_embedding_centroid=None, global_covariance_weights=None):
+    def candidate_weighting(self, sent2vec_model, filename, draw_graphs=False, language='en', document_similarity_data=None, document_similarity_new_candidate_constant=1.0, document_similarity_weights=None, global_covariance_matrix=None, global_embedding_centroid=None, global_covariance_weights=None):
         # Compute the document embedding based on only nouns and adjectives
         self._compute_document_embedding(sent2vec_model, language)
 
@@ -24,7 +24,7 @@ class EmbedRank(LoadFile):
         self._compute_phrase_embeddings(sent2vec_model)
 
         # Rank the candidate phrases according to their cosine distance to the document embedding
-        self._rank_candidates(document_similarity_data, document_similarity_new_candidate_constant, global_covariance_matrix, global_embedding_centroid, global_covariance_weights)
+        self._rank_candidates(document_similarity_data, document_similarity_new_candidate_constant, document_similarity_weights, global_covariance_matrix, global_embedding_centroid, global_covariance_weights)
 
         # Simple embedding visualization
         if draw_graphs is True:
@@ -61,7 +61,7 @@ class EmbedRank(LoadFile):
                 del self.candidates[term]
         self.phrase_embeddings = self.phrase_embeddings[valid_candidates_mask, :]
 
-    def _rank_candidates(self, document_similarity_data=None, document_similarity_new_candidate_constant=1.0, global_covariance_matrix=None, global_embedding_centroid=None, global_covariance_weights=None):
+    def _rank_candidates(self, document_similarity_data=None, document_similarity_new_candidate_constant=1.0, document_similarity_weights=None, global_covariance_matrix=None, global_embedding_centroid=None, global_covariance_weights=None):
         for index, candidate_tuple in enumerate(sorted(self.candidates.items())):
             term, candidate = candidate_tuple
             candidate_embedding = self.phrase_embeddings[index]
@@ -74,6 +74,8 @@ class EmbedRank(LoadFile):
             # bias value of 1 [This might be changed and could be a hyperparameter] (very important for this document
             # since they did not appear in any of the training documents)
             if document_similarity_data is not None:
+                assert type(document_similarity_weights) is tuple, "document_similarity_weights is not a tuple: %r" % document_similarity_weights
+
                 if candidate.tokenized_form in document_similarity_data.columns:
                     candidate_column = document_similarity_data[candidate.tokenized_form]
                     candidate_column = candidate_column.append(DataFrame({0: {'Current Document': self.weights[term]}}))
@@ -83,7 +85,7 @@ class EmbedRank(LoadFile):
                     # print("Candidate '%s' not found in document similarity data." % candidate.tokenized_form)
                     candidate_document_similarity_bias = document_similarity_new_candidate_constant
 
-                self.weights[term] = self.weights[term] * candidate_document_similarity_bias
+                self.weights[term] = self.weights[term] * document_similarity_weights[0] + candidate_document_similarity_bias * document_similarity_weights[1]
                 # self.weights[term] = candidate_document_similarity_bias
 
             if global_covariance_matrix is not None:
