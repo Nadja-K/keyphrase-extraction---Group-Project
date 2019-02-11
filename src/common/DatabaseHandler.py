@@ -106,6 +106,7 @@ class DatabaseHandler:
                 extracted_documents_references[document['id']] = document[reference_table]
                 self._current_index += 1
 
+            print(len(extracted_documents))
             return extracted_documents, extracted_documents_references
 
     def generate_document_object(self, model, document, **kwargs):

@@ -65,8 +65,8 @@ def main():
     # don't change these
     normalization = 'stemming'
 
-    # data to use (needs to be adapted for the database later) # FIXME
-    dataset = 'SemEval-2010'  # SemEval-2010, Inspec, DUC-2001, Heise
+    # data to use
+    dataset = 'Heise'  # SemEval-2010, Inspec, DUC-2001, Heise
     if dataset == 'SemEval-2010':
         input_data = "../ake-datasets/datasets/SemEval-2010/train"
     elif dataset == 'Inspec':
@@ -84,9 +84,7 @@ def main():
     # Candidate Selection based on the dataset
     if dataset == 'Heise':
         db_handler = DatabaseHandler()
-        # FIXME: get train data from db
-        documents, _ = db_handler.load_documents_from_db(EmbedRank, batch_size=200, table='pos_tags',
-                                                                  reference_table='stemmed_filtered_stemmed')
+        documents, _ = db_handler.load_split_from_db(EmbedRank, dataset=dataset, split='train', reference_table='stemmed_filtered_stemmed')
         for key, doc in documents.items():
             extractor = doc['document']
 

@@ -20,14 +20,20 @@ class CooccurrenceClusterFeature:
 
         reduced_cooccurrence_matrix = np.zeros((len(filtered_candidate_terms), len(filtered_candidate_terms)))
         for local_word_index1, word1 in enumerate(filtered_candidate_terms):
-            global_word_index1 = keys.index(word1)
-            for local_word_index2, word2 in enumerate(filtered_candidate_terms):
-                if local_word_index2 < local_word_index1:
-                    continue
-                else:
-                    global_word_index2 = keys.index(word2)
-                    reduced_cooccurrence_matrix[local_word_index1][local_word_index2] = full_matrix[global_word_index1][global_word_index2]
-                    reduced_cooccurrence_matrix[local_word_index2][local_word_index1] = reduced_cooccurrence_matrix[local_word_index1][local_word_index2]
+                global_word_index1 = keys.index(word1) if word1 in keys else -1
+                for local_word_index2, word2 in enumerate(filtered_candidate_terms):
+                    if local_word_index2 < local_word_index1:
+                        continue
+                    else:
+                        global_word_index2 = keys.index(word2) if word2 in keys else -1
+
+                        # Handle words that do not appear in the full global cooccurrence matrix
+                        if global_word_index1 == -1 or global_word_index2 == -1:
+                            reduced_cooccurrence_matrix[local_word_index1][local_word_index2] = 0
+                            reduced_cooccurrence_matrix[local_word_index2][local_word_index1] = 0
+                        else:
+                            reduced_cooccurrence_matrix[local_word_index1][local_word_index2] = full_matrix[global_word_index1][global_word_index2]
+                            reduced_cooccurrence_matrix[local_word_index2][local_word_index1] = reduced_cooccurrence_matrix[local_word_index1][local_word_index2]
 
         return reduced_cooccurrence_matrix
 

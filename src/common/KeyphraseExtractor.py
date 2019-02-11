@@ -292,7 +292,7 @@ class KeyphraseExtractor:
             factor, params = self.get_param('factor', 1, **params)
             n_keyphrases = int(n_keyphrases * factor)
 
-        print(params['num_clusters'], n_keyphrases)
+        # print(params['num_clusters'], n_keyphrases)
         return extractor.get_n_best(n=n_keyphrases, redundancy_removal=redundancy_removal, stemming=(normalization == 'stemming')), extractor, params
 
     def _evaluate_document(self, model, input_document, references, evaluators, print_document_scores=True, **kwargs):

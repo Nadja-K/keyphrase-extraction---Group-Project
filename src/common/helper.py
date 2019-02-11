@@ -2,6 +2,7 @@ from collections import defaultdict
 from string import punctuation
 
 from pandas import json
+from six.moves import cPickle as pickle #for performance
 from pke import compute_document_frequency, compute_lda_model, Candidate
 from nltk.stem.snowball import SnowballStemmer
 import pke
@@ -180,40 +181,34 @@ def compute_df(input_dir, output_file, extension="xml"):
                                stoplist=stoplist)
 
 
-def compute_db_document_frequency(output_file, dataset='Heise', extension='xml', delimiter='\t', **kwargs):
+def compute_db_document_frequency(output_file, dataset='heise', extension='xml', delimiter='\t', **kwargs):
     language = kwargs.get('language', 'en')
     normalization = kwargs.get('normalization', 'stemming')
     window = kwargs.get('window', 2)
     n_grams = kwargs.get('n_grams', 3)
     stoplist = kwargs.get('stoplist', None)
-    batch_size = kwargs.get('batch_size', 100)
-    num_documents = kwargs.get('num_documents', 0)
+    split = kwargs.get('split', None)
     frequencies = defaultdict(set)
 
     document_names = []
 
-    print("Loading documents from the database for the %s dataset." % dataset)
+    print("Loading documents from the database for the %s dataset %s split." % (dataset, split))
     db_handler = DatabaseHandler()
 
-    if num_documents == 0:
-        num_documents = db_handler.get_num_documents_with_keyphrases(**kwargs)
+    documents, _ = db_handler.load_split_from_db(KeyCluster, dataset, **kwargs)
+    num_documents = len(documents)
 
-    while (num_documents > 0):
-        documents, _ = db_handler.load_documents_from_db(KeyCluster, **kwargs)
-        for key, doc in documents.items():
-            document_names.append(key)
+    for key, doc in documents.items():
+        document_names.append(key)
 
-            logging.info('reading file ' + key)
+        logging.info('reading file ' + key)
 
-            doc['document'].ngram_selection(n=n_grams)
-            doc['document'].candidate_filtering(stoplist=stoplist)
-            for lexical_form in doc['document'].candidates:
-                frequencies[lexical_form].add(key)
+        doc['document'].ngram_selection(n=n_grams)
+        doc['document'].candidate_filtering(stoplist=stoplist)
+        for lexical_form in doc['document'].candidates:
+            frequencies[lexical_form].add(key)
 
-        num_documents -= batch_size
-        print("Done with batch.")
-
-    num_documents = len(document_names)
+    print("Done with calculating document frequency for the current %s %s split. Total number of documents was: %s" % (dataset, split, num_documents))
 
     if os.path.dirname(output_file):
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -228,36 +223,35 @@ def compute_db_document_frequency(output_file, dataset='Heise', extension='xml',
             f.write(line.encode('utf-8') + b'\n')
 
 
-def compute_global_cooccurrence(output_file, input_dir=None, dataset='Heise', extension='xml', **kwargs):
+def compute_global_cooccurrence(output_file, input_dir=None, dataset='heise', extension='xml', **kwargs):
     language = kwargs.get('language', 'en')
     normalization = kwargs.get('normalization', 'stemming')
     window = kwargs.get('window', 2)
     n_grams = kwargs.get('n_grams', 1)
     stoplist = kwargs.get('stoplist', None)
-    batch_size = kwargs.get('batch_size', 100)
-    num_documents = kwargs.get('num_documents', 0)
+    split = kwargs.get('split', None)
     co_occurrences = dict()
     word_counts = dict()
     num_words_total = 0
 
     if input_dir is None:
-        print("No input directory set, loading documents from the database for the %s dataset." % dataset)
+
+        print("Loading documents from the database for the %s dataset %s split." % (dataset, split))
         db_handler = DatabaseHandler()
 
-        if num_documents == 0:
-            num_documents = db_handler.get_num_documents()
+        documents, _ = db_handler.load_split_from_db(KeyCluster, dataset, **kwargs)
+        num_documents = len(documents)
 
-        while(num_documents > 0):
-            documents, _ = db_handler.load_documents_from_db(KeyCluster, **kwargs)
-            for key, doc in documents.items():
-                logging.info('reading file ' + key)
+        for key, doc in documents.items():
+            logging.info('reading file ' + key)
 
-                word_counts, co_occurrences, num_words_total = _compute_document_cooccurrence(output_file, key, doc['document'],
-                                                                                              stoplist, n_grams, window,
-                                                                                              word_counts, co_occurrences,
-                                                                                              num_words_total)
-            num_documents -= batch_size
-            print("Done with batch.")
+            word_counts, co_occurrences, num_words_total = _compute_document_cooccurrence(output_file, key, doc['document'],
+                                                                                          stoplist, n_grams, window,
+                                                                                          word_counts, co_occurrences,
+                                                                                          num_words_total)
+
+        print("Done with calculating the global cooccurrence for the current %s %s split. Total number of documents was: %s" % (dataset, split, num_documents))
+        del documents
     else:
         for input_file in glob.glob(input_dir + "/*." + extension):
             logging.info('reading file ' + input_file)
@@ -271,26 +265,24 @@ def compute_global_cooccurrence(output_file, input_dir=None, dataset='Heise', ex
 
     final_candidates = list(co_occurrences.keys())
     # Create global cooccurrence matrix from the dictionary
-    cooccurrence_matrix = np.zeros((len(co_occurrences.keys()), len(co_occurrences.keys())))
+    cooccurrence_matrix = np.zeros((len(co_occurrences.keys()), len(co_occurrences.keys())), dtype=np.int8)
     for word1, co_occurrence_words in co_occurrences.items():
         index1 = final_candidates.index(word1)
         for word2, co_occurrence_count in co_occurrence_words.items():
             index2 = final_candidates.index(word2)
             cooccurrence_matrix[index1][index2] = co_occurrence_count
+            del index2
+        del index1
 
     output = {
         'keys': final_candidates,
         'word_counts': word_counts,
         'num_words_total': num_words_total,
         'shape': cooccurrence_matrix.shape,
-        'cooccurrence_matrix': cooccurrence_matrix.tolist(),
+        'cooccurrence_matrix': cooccurrence_matrix,
     }
-    print(num_words_total)
-    # print(cooccurrence_matrix.shape)
-    # print(cooccurrence_matrix)
-    # print(np.max(cooccurrence_matrix))
-    with open(output_file, 'w') as f:
-        json.dump(output, f)
+    with open(output_file, 'wb') as f:
+        pickle.dump(output, f, protocol=4)
 
 
 def _compute_document_cooccurrence(output_file, doc_name, doc, stoplist, n_grams, window, word_counts, co_occurrences, num_words_total):
@@ -394,10 +386,8 @@ def load_global_cooccurrence_matrix(**kwargs):
         print("No global cooccurrence matrix loaded.")
 
     else:
-        with open(global_cooccurrence_matrix_path, 'r') as f:
-            global_cooccurrence_matrix = json.load(f)
-            global_cooccurrence_matrix['cooccurrence_matrix'] = np.array(
-                global_cooccurrence_matrix['cooccurrence_matrix'])
+        with open(global_cooccurrence_matrix_path, 'rb') as f:
+            global_cooccurrence_matrix = pickle.load(f)
 
         print("Finished loading global cooccurence matrix: %s" % global_cooccurrence_matrix_path)
         kwargs['global_cooccurrence_matrix'] = global_cooccurrence_matrix

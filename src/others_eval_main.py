@@ -47,7 +47,7 @@ kwargs = {
     'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
     # 'cluster_feature_calculator': WordEmbeddingsClusterFeature,#PPMIClusterFeature,
     # word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
-    # 'global_cooccurrence_matrix': 'inspec_out.cooccurrence',#'semeval_out.cooccurrence',
+    'global_cooccurrence_matrix': 'data/global_cooccurrence/inspec_train.cooccurrence',#'semeval_out.cooccurrence',
     # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
     # 'regex': '',
@@ -62,11 +62,11 @@ kwargs = {
     'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare], #stemmed_wordwise_phrase_compare,
 
     ## EmbedRank
-    'sent2vec_model': '../word_embedding_models/english/sent2vec/wiki_bigrams.bin',
-    'document_similarity': False,
+    # 'sent2vec_model': '../word_embedding_models/english/sent2vec/wiki_bigrams.bin',
+    # 'document_similarity': False,
     # 'document_similarity_new_candidate_constant': 1.0,
     # 'document_similarity_weights': (1.0, 1.0),
-    'global_covariance': False,
+    # 'global_covariance': False,
     # 'global_covariance_weights': (4.0, 0.1),
 
     # 'filter_reference_keyphrases': True # ONLY USE FOR KEYCLUSTER CHECKING!,
@@ -110,9 +110,9 @@ def custom_testing():
 
 
     # DUC-2001
-    train_folder = "../ake-datasets/datasets/DUC-2001/test"
-    test_folder = "../ake-datasets/datasets/DUC-2001/test"
-    reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
+    # train_folder = "../ake-datasets/datasets/DUC-2001/test"
+    # test_folder = "../ake-datasets/datasets/DUC-2001/test"
+    # reference_stemmed_file = "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json"
 
     # Only needs to be done once for a dataset
     # print("Computing the global cooccurrence matrix.")
