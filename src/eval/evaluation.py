@@ -165,8 +165,12 @@ def stemmed_word_compare(original_keywords: Sequence[str], found_keywords: Seque
     return _compare(original_keywords, found_keywords, _stemmed_words)
 
 
-def stemmed_wordwise_phrase_compare(original_keywords, found_keywords) -> ComparisonResult:
+def stemmed_wordwise_phrase_compare(original_keywords, found_keywords) -> IoUResult:
     return _wordwise_compare(original_keywords, found_keywords, _stemmed_phrases)
+
+
+def wordwise_phrase_compare(original_keywords, found_keywords) -> IoUResult:
+    return _wordwise_compare(original_keywords, found_keywords, _phrases)
 
 
 def _phrases(keyphrases: Sequence[str]) -> Set[str]:

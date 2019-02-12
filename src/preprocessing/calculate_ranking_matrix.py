@@ -30,6 +30,7 @@ def collect_candidates(document_embeddings, candidate_strings, extractor, filena
 
 
 def compute_candidate_embeddings(sent2vec_model, candidate_strings):
+    candidate_strings = list(candidate_strings)
     candidate_embeddings = sent2vec_model.get_tokenized_sents_embeddings(candidate_strings)
     print("Candidate embeddings computed")
 
@@ -39,7 +40,6 @@ def compute_candidate_embeddings(sent2vec_model, candidate_strings):
 
     # Filter out candidate phrases from the string list as well
     filtered_candidate_strings = []
-    candidate_strings = list(candidate_strings)
     for index, keep in enumerate(valid_candidates_mask):
         if keep == True:
             filtered_candidate_strings.append(candidate_strings[index])
@@ -88,15 +88,15 @@ def compute_all_candidate_document_similarity(candidate_strings, candidate_embed
 
 def main():
     # change these depending on the language
-    language = 'en'
-    regex = 'a*n+'
-    sent2vec_model_name = '../word_embedding_models/english/sent2vec/wiki_bigrams.bin'
+    language = 'de'#'en'
+    regex = 'n{1,3}'#'a*n+'
+    sent2vec_model_name = '../word_embedding_models/german/sent2vec/de_model.bin'#'../word_embedding_models/english/sent2vec/wiki_bigrams.bin'
 
     # don't change these
     normalization = 'stemming'
 
     # data to use
-    dataset = 'Inspec'  # SemEval-2010, Inspec, DUC-2001, Heise
+    dataset = 'Heise'  # SemEval-2010, Inspec, DUC-2001, Heise
     if dataset == 'SemEval-2010':
         input_data = "../ake-datasets/datasets/SemEval-2010/train"
     elif dataset == 'Inspec':

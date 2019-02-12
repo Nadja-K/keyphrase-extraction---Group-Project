@@ -368,6 +368,7 @@ class KeyphraseExtractor:
                 database_handler.write_data_to_db(filename, doc_eval_data, data_candidate_keyphrases=data_candidate_keyphrases, **adjusted_params)
         return evaluators
 
+
     def calculate_model_f_score(self, model, input_data=None, references=None, print_document_scores=True, **kwargs):
         num_documents_evaluated = 0
 

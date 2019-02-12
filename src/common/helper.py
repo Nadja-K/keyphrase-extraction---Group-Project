@@ -350,9 +350,12 @@ def load_document_similarity_data(input_data, **kwargs):
     load_document_similarity = kwargs.get('document_similarity', False)
 
     if load_document_similarity is True:
-        dataset = 'Heise'
         if input_data is not None:
-            dataset = Path(input_data).parts[-2]
+            input_data_parts = Path(input_data).parts
+            if len(input_data_parts) > 1:
+                dataset = input_data_parts[-2]
+            else:
+                dataset = 'Heise'
 
         print("Loading document similarity data for the %s data." % dataset)
         similarity_data = pd.read_pickle(Path("data/document_similarity/" + dataset + "_similarity_dataframe"))
