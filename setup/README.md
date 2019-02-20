@@ -5,8 +5,8 @@
 * run pip install -r requirements.txt
 
 ## External dependencies
-* pke https://github.com/boudinfl/pke
-* sent2vec https://github.com/epfml/sent2vec
+* pke https://github.com/boudinfl/pke: run pip install git+https://github.com/boudinfl/pke.git
+* sent2vec https://github.com/epfml/sent2vec :run pip install git+https://github.com/epfml/sent2vec.git
 
 ## Directory structure
 FIXME
@@ -22,6 +22,9 @@ FIXME
 * German frequent word list: FIXME
 
 * Global statistic matrices: FIXME
+
+* Download English spacy models: python -m spacy download en
+* Download German spacy models: python -m spacy download de
 
 ## Extracting keyphrases from a raw text
 * German example: FIXME
