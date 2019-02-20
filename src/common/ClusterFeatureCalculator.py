@@ -19,7 +19,6 @@ class CooccurrenceClusterFeature:
         # print("Using global cooccurrence matrix")
         keys = self.global_cooccurrence_matrix['keys']
         full_matrix = self.global_cooccurrence_matrix['cooccurrence_matrix']
-        print(np.min(full_matrix))
 
         if self.global_cooccurrence_constant == 'mean':
             self.global_cooccurrence_constant = full_matrix.mean()

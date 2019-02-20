@@ -435,7 +435,7 @@ class KeyphraseExtractor:
         kwargs = load_global_cooccurrence_matrix(**kwargs)
 
         # Load the sent2vec model
-        kwargs.update({'sent2vec_model': EmbeddingDistributor(kwargs.get('sent2vec_model', '../word_embedding_models/german/sent2vec/de_model.bin'))})
+        # kwargs.update({'sent2vec_model': EmbeddingDistributor(kwargs.get('sent2vec_model', '../word_embedding_models/german/sent2vec/de_model.bin'))})
 
         language = kwargs.get('language', 'en')
         normalization = kwargs.get('normalization', 'stemming')
@@ -444,9 +444,22 @@ class KeyphraseExtractor:
         extractor = model()
         extractor.load_document(input_document, language=language, normalization=normalization)
 
+        # Add ids to the sentences
+        cur_id = 1
+        for sent in extractor.sentences:
+            if 'id' not in sent.meta.keys():
+                sent.meta['id'] = cur_id
+                cur_id += 1
+
         print("Processing File: %s" % filename)
         keyphrases, context, adjusted_params = self.extract_keyphrases(model, extractor, filename, **kwargs)
-        return keyphrases
+
+        # If stemming was used also retrieve the unstemmed keyphrases
+        if normalization == 'stemming':
+            unstemmed_keyphrases = extractor.get_n_best(n=len(keyphrases), redundancy_removal=False, stemming=False)
+            return keyphrases, unstemmed_keyphrases
+        else:
+            return keyphrases, []
 
     def _calc_avg_scores(self, evaluators, num_documents, print_document_scores=True):
         for key, evaluator_data in evaluators.items():

@@ -15,7 +15,10 @@ _MAPPING = {
     'X': 'x',
     '.': 's',
     'PUNCT': 's',
-    'SPACE': ''
+    'SPACE': '',
+    'PART': 'b',
+    'AUX': 'B',
+    'SCONJ': 'l'
 }
 
 
@@ -25,6 +28,7 @@ class KeyphraseSelector:
         for sentence in list(sentences):
             sentence_id = int(sentence.meta['id'])
             pos_tags = ""
+
             # Create a simpler string representing the PoS Tags for the regex
             for pos in sentence.pos:
                 pos_tags = pos_tags + _MAPPING[pos]
