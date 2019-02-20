@@ -96,34 +96,29 @@ class PPMIClusterFeature(CooccurrenceClusterFeature):
         assert self.global_cooccurrence_matrix is not None, "PPMI needs a global cooccurrence matrix, please specify one under 'global_cooccurrence_matrix."
 
         cooccurrence_matrix = super()._reduce_global_cooccurrence_matrix(filtered_candidate_terms)
-        print(np.min(cooccurrence_matrix))
         word_counts = self.global_cooccurrence_matrix['word_counts']
         num_words_total = self.global_cooccurrence_matrix['num_words_total']
 
         ppmi_matrix = np.zeros((len(filtered_candidate_terms), len(filtered_candidate_terms)))
         for index1, word1 in enumerate(filtered_candidate_terms):
-            word1_count = word_counts[word1]
             for index2, word2 in enumerate(filtered_candidate_terms[index1:]):
                 index2 = index2 + index1
-                word2_count = word_counts[word2]
-                cooccurrence_count = cooccurrence_matrix[index1][index2]
-
-                # if a word does not appear in the global co occurrence matrix we divide by epsilon instead of 0
-                # *num_words_total because we need the word frequencies.
-                if word1_count == 0 or word2_count == 0:
-                    # print(word1_count, word2_count)
+                # if a word does not appear in the global co occurrence matrix we set the ppmi value to a constant
+                if word1 not in word_counts or word2 not in word_counts:
+                    # ppmi = 0
+                    cooccurrence_count = cooccurrence_matrix[index1][index2]
                     ppmi = max(np.log2((cooccurrence_count * num_words_total) / (sys.float_info.epsilon)), 0)
-                    print(ppmi)
                 else:
-                    # print(word1_count, word2_count)
+                    word1_count = word_counts[word1]
+                    word2_count = word_counts[word2]
+                    cooccurrence_count = cooccurrence_matrix[index1][index2]
+
                     ppmi = max(np.log2((cooccurrence_count * num_words_total) / (word1_count * word2_count)), 0)
-                # print(ppmi)
+
                 if np.isnan(ppmi):
                     print(word1, word2, word1_count, word2_count, cooccurrence_count, num_words_total)
                 ppmi_matrix[index1][index2] = ppmi
         ppmi_matrix = ppmi_matrix + np.triu(ppmi_matrix, k=1).T
-
-        print(np.argwhere(np.isnan(ppmi_matrix)))
         return ppmi_matrix
 
 
