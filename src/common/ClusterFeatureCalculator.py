@@ -1,6 +1,7 @@
 import string
 import numpy as np
 from collections import defaultdict
+import sys
 
 import sklearn
 import spacy
@@ -12,11 +13,17 @@ class CooccurrenceClusterFeature:
     def __init__(self, **kwargs):
         self.window = kwargs.get('window', 2)
         self.global_cooccurrence_matrix = kwargs.get('global_cooccurrence_matrix', None)
+        self.global_cooccurrence_constant = kwargs.get('global_cooccurrence_constant', 0)
 
     def _reduce_global_cooccurrence_matrix(self, filtered_candidate_terms):
         # print("Using global cooccurrence matrix")
         keys = self.global_cooccurrence_matrix['keys']
         full_matrix = self.global_cooccurrence_matrix['cooccurrence_matrix']
+        print(np.min(full_matrix))
+
+        if self.global_cooccurrence_constant == 'mean':
+            self.global_cooccurrence_constant = full_matrix.mean()
+            print(self.global_cooccurrence_constant)
 
         reduced_cooccurrence_matrix = np.zeros((len(filtered_candidate_terms), len(filtered_candidate_terms)))
         for local_word_index1, word1 in enumerate(filtered_candidate_terms):
@@ -29,8 +36,8 @@ class CooccurrenceClusterFeature:
 
                         # Handle words that do not appear in the full global cooccurrence matrix
                         if global_word_index1 == -1 or global_word_index2 == -1:
-                            reduced_cooccurrence_matrix[local_word_index1][local_word_index2] = 0
-                            reduced_cooccurrence_matrix[local_word_index2][local_word_index1] = 0
+                            reduced_cooccurrence_matrix[local_word_index1][local_word_index2] = self.global_cooccurrence_constant
+                            reduced_cooccurrence_matrix[local_word_index2][local_word_index1] = self.global_cooccurrence_constant
                         else:
                             reduced_cooccurrence_matrix[local_word_index1][local_word_index2] = full_matrix[global_word_index1][global_word_index2]
                             reduced_cooccurrence_matrix[local_word_index2][local_word_index1] = reduced_cooccurrence_matrix[local_word_index1][local_word_index2]
@@ -90,6 +97,7 @@ class PPMIClusterFeature(CooccurrenceClusterFeature):
         assert self.global_cooccurrence_matrix is not None, "PPMI needs a global cooccurrence matrix, please specify one under 'global_cooccurrence_matrix."
 
         cooccurrence_matrix = super()._reduce_global_cooccurrence_matrix(filtered_candidate_terms)
+        print(np.min(cooccurrence_matrix))
         word_counts = self.global_cooccurrence_matrix['word_counts']
         num_words_total = self.global_cooccurrence_matrix['num_words_total']
 
@@ -100,10 +108,23 @@ class PPMIClusterFeature(CooccurrenceClusterFeature):
                 index2 = index2 + index1
                 word2_count = word_counts[word2]
                 cooccurrence_count = cooccurrence_matrix[index1][index2]
-                ppmi = max(np.log2(cooccurrence_count*num_words_total / (word1_count * word2_count)), 0)
+
+                # if a word does not appear in the global co occurrence matrix we divide by epsilon instead of 0
+                # *num_words_total because we need the word frequencies.
+                if word1_count == 0 or word2_count == 0:
+                    # print(word1_count, word2_count)
+                    ppmi = max(np.log2((cooccurrence_count * num_words_total) / (sys.float_info.epsilon)), 0)
+                    print(ppmi)
+                else:
+                    # print(word1_count, word2_count)
+                    ppmi = max(np.log2((cooccurrence_count * num_words_total) / (word1_count * word2_count)), 0)
+                # print(ppmi)
+                if np.isnan(ppmi):
+                    print(word1, word2, word1_count, word2_count, cooccurrence_count, num_words_total)
                 ppmi_matrix[index1][index2] = ppmi
         ppmi_matrix = ppmi_matrix + np.triu(ppmi_matrix, k=1).T
 
+        print(np.argwhere(np.isnan(ppmi_matrix)))
         return ppmi_matrix
 
 

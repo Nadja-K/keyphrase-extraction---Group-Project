@@ -262,10 +262,9 @@ def compute_global_cooccurrence(output_file, input_dir=None, dataset='heise', ex
                                                                                           stoplist, n_grams, window,
                                                                                           word_counts, co_occurrences,
                                                                                           num_words_total)
-
     final_candidates = list(co_occurrences.keys())
     # Create global cooccurrence matrix from the dictionary
-    cooccurrence_matrix = np.zeros((len(co_occurrences.keys()), len(co_occurrences.keys())), dtype=np.int8)
+    cooccurrence_matrix = np.zeros((len(co_occurrences.keys()), len(co_occurrences.keys())), dtype=np.int16)
     for word1, co_occurrence_words in co_occurrences.items():
         index1 = final_candidates.index(word1)
         for word2, co_occurrence_count in co_occurrence_words.items():
