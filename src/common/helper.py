@@ -366,10 +366,13 @@ def load_document_similarity_data(input_data, **kwargs):
 def load_global_covariance_matrix(input_data, **kwargs):
     load_global_covariance = kwargs.get('global_covariance', False)
 
-    if load_global_covariance:
-        dataset = 'Heise'
-        if input_data:
-            dataset = Path(input_data).parts[-2]
+    if load_global_covariance is True:
+        if input_data is not None:
+            input_data_parts = Path(input_data).parts
+            if len(input_data_parts) > 1:
+                dataset = input_data_parts[-2]
+            else:
+                dataset = 'Heise'
 
         print('Loading global covariance matrix data for the %s data.' % dataset)
         global_covariance_matrix = np.load(f'../data/{dataset}_inv_covariance.npy')

@@ -11,7 +11,7 @@ from methods.EmbedRank import EmbedRank
 
 from common.KeyphraseExtractor import KeyphraseExtractor
 
-from eval.evaluation import stemmed_wordwise_phrase_compare, stemmed_compare
+from eval.evaluation import stemmed_wordwise_phrase_compare, stemmed_compare, word_compare, wordwise_phrase_compare
 
 from common.helper import custom_normalize_POS_tags, compute_df, compute_global_cooccurrence
 
@@ -22,11 +22,11 @@ pke.LoadFile.normalize_pos_tags = custom_normalize_POS_tags
 kwargs = {
     'language': 'en',
     'normalization': "stemming",
-    # 'n_keyphrases': 15,
+    'n_keyphrases': 10,
     # 'redundancy_removal': ,
     # 'n_grams': 1,
     # 'stoplist': ,
-    # 'frequency_file': 'data/document_frequency/semEval_train_df_counts.tsv.gz',#'../ake-datasets/datasets/SemEval-2010/df_counts.tsv.gz',
+    # 'frequency_file': 'data/document_frequency/semEval_train_df_counts.tsv.gz',#'data/document_frequency/semEval_train_df_counts.tsv.gz',#'../ake-datasets/datasets/SemEval-2010/df_counts.tsv.gz',
     # 'window': 2,
     # 'pos': ,
     # 'top_percent': 1.0,
@@ -44,28 +44,28 @@ kwargs = {
     # 'sigma': ,
 
     ## KeyCluster
-    'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
+    # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
     # 'cluster_feature_calculator': WordEmbeddingsClusterFeature,#PPMIClusterFeature,
     # word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
-    'global_cooccurrence_matrix': 'data/global_cooccurrence/inspec_train.cooccurrence',#'semeval_out.cooccurrence',
+    # 'global_cooccurrence_matrix': 'data/global_cooccurrence/inspec_train.cooccurrence',#'semeval_out.cooccurrence',
     # 'cluster_method': SpectralClustering,
     # 'keyphrase_selector': ,
     # 'regex': '',
     # 'num_clusters': 5,#20,
     # 'cluster_calc': ,
     # 'factor': 2/3,
-    'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',
-    'min_word_count': 1000,
+    # 'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',
+    # 'min_word_count': 1000,
     # 'frequent_word_list': ['test'],
     # 'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',
     # 'word_embedding_model':
     'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare], #stemmed_wordwise_phrase_compare,
 
     ## EmbedRank
-    # 'sent2vec_model': '../word_embedding_models/english/sent2vec/wiki_bigrams.bin',
-    # 'document_similarity': False,
+    'sent2vec_model': '../word_embedding_models/english/sent2vec/wiki_bigrams.bin',
+    # 'document_similarity': True,
     # 'document_similarity_new_candidate_constant': 1.0,
-    # 'document_similarity_weights': (1.0, 1.0),
+    # 'document_similarity_weights': (1.0, 0.5),
     # 'global_covariance': False,
     # 'global_covariance_weights': (4.0, 0.1),
 
@@ -94,14 +94,14 @@ def custom_testing():
 
 
     # Inspec
-    # train_folder = "../ake-datasets/datasets/Inspec/train"
-    # test_folder = "../ake-datasets/datasets/Inspec/dev"
-    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
-    # reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+    train_folder = "../ake-datasets/datasets/Inspec/train"
+    test_folder = "../ake-datasets/datasets/Inspec/dev"
+    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
+    reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
 
-    # test_folder = "../ake-datasets/datasets/Inspec/test"
-    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
-    # reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
+    test_folder = "../ake-datasets/datasets/Inspec/test"
+    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
+    reference_unstemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
 
     # Only needs to be done once for a dataset
     # print("Computing the global cooccurrence matrix.")
@@ -153,7 +153,8 @@ def custom_testing():
             macro_recall = evaluator_data['macro_recall']
             macro_f_score = evaluator_data['macro_f_score']
 
-            print("%s - Macro average precision: %s, recall: %s, f-score: %s" % (key, macro_precision, macro_recall, macro_f_score))
+            print("%s %s %s" % (str(macro_precision).replace('.', ','), str(macro_recall).replace('.', ','), str(macro_f_score).replace('.', ',')))
+            # print("%s - Macro average precision: %s, recall: %s, f-score: %s" % (key, macro_precision, macro_recall, macro_f_score))
 
     # For testing with a single raw text file.
     # for m in models:
@@ -188,15 +189,15 @@ def collect_dataset_statistics():
     # folder = "../ake-datasets/datasets/Inspec/dev"
     # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json"
     # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/dev.uncontr.json"
-    folder = "../ake-datasets/datasets/Inspec/test"
-    reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
+    # folder = "../ake-datasets/datasets/Inspec/test"
+    # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json"
     # reference_stemmed_file = "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
 
     # folder = "../ake-datasets/datasets/SemEval-2010/train"
     # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/train.combined.stem.json"
     # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/train.combined.json"
-    # folder = "../ake-datasets/datasets/SemEval-2010/test"
-    # reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
+    folder = "../ake-datasets/datasets/SemEval-2010/test"
+    reference_stemmed_file = "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json"
 
     keyphrase_extractor = KeyphraseExtractor()
     reference_stemmed = pke.utils.load_references(reference_stemmed_file)

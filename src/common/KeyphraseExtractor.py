@@ -424,7 +424,7 @@ class KeyphraseExtractor:
 
         return self._calc_avg_scores(evaluators, num_documents_evaluated, print_document_scores=False)
 
-    def extract_keyphrases_from_raw_text(self, model, input_document, **kwargs):
+    def extract_keyphrases_from_raw_text(self, model, input_document, input_data=None, **kwargs):
         # Parse the frequent word list once for the model
         kwargs = _load_frequent_word_list(**kwargs)
 
@@ -434,8 +434,14 @@ class KeyphraseExtractor:
         # Load the global cooccurrence matrix if specified
         kwargs = load_global_cooccurrence_matrix(**kwargs)
 
+        # Load the document similarity data if specified
+        kwargs = load_document_similarity_data(input_data, **kwargs)
+
+        # Load the global covariance matrix if specified
+        kwargs = load_global_covariance_matrix(input_data, **kwargs)
+
         # Load the sent2vec model
-        # kwargs.update({'sent2vec_model': EmbeddingDistributor(kwargs.get('sent2vec_model', '../word_embedding_models/german/sent2vec/de_model.bin'))})
+        kwargs.update({'sent2vec_model': EmbeddingDistributor(kwargs.get('sent2vec_model', '../word_embedding_models/german/sent2vec/de_model.bin'))})
 
         language = kwargs.get('language', 'en')
         normalization = kwargs.get('normalization', 'stemming')
