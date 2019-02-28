@@ -110,7 +110,7 @@ def main():
     pke.base.ISO_to_language['de'] = 'german'
 
     parser = argparse.ArgumentParser(description="Argument for the keyphrase extraction demo.")
-    parser.add_argument('conf', type=str, default="data/demo_confs/heise_embedrank.ini", nargs='?',
+    parser.add_argument('conf', type=str, default="data/demo_confs/de_embedrank.ini", nargs='?',
                         help="Path to the .ini file that holds the configuration for this extraction run.")
     parser.add_argument('input', type=str, default="test_input.txt", nargs='?',
                         help="Path to the .txt file that contains the plain input text.")
