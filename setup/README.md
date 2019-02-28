@@ -15,20 +15,22 @@ project
 │   │   │   en_keycluster.ini
 │   │      
 │   └───document_similarity
-│   │   │   Heise_similarity_dataframe      [Needs to be downloaded separately]
-│   │   │   Inspec_similarity_dataframe     [Needs to be downloaded separately]
+│   │   │   Heise_similarity_dataframe          [Needs to be downloaded separately]
+│   │   │   Inspec_similarity_dataframe         [Needs to be downloaded separately]
 │   │   
 │   └───mahalanobis_covariance
-│   │   │   FIXME
-│   │   │   FIXME
+│   │   │   Heise_inv_covariance.npy           
+│   │   │   Heise_inv_covariance_centroid.npy  
+│   │   │   Inspec_inv_covariance.npy          
+│   │   │   Inspec_inv_covariance_centroid.npy 
 │   │   
 │   └───frequent_word_lists
 │   │   │   de_50k.txt
 │   │   │   en_50k.txt
 │   │
 │   └───global_cooccurrence
-│       │   heise_train.cooccurrente        [Needs to be downloaded separately]
-│       │   inspec_train.cooccurrence       [Needs to be downloaded separately]
+│       │   heise_train.cooccurrence            [Needs to be downloaded separately]
+│       │   inspec_train.cooccurrence           [Needs to be downloaded separately]
 │
 └───frontend
 │   │   ...
@@ -72,9 +74,9 @@ Furthermore, we implemented a visualization for extracted keyphrases. The code f
 This code requires python 3.6.7, as well as a few external dependencies ([see the next Section](#external-dependencies)).
 To install the remaining requirements, create a new python environment and run:
 ```
-pip install -r setup\requirements.txt
+pip install -r setup/requirements.txt
 ```
-To support German and English text in scipy, run the following commands:
+To support German and English texts in scipy, run the following commands:
 ```
 python -m spacy download en
 python -m spacy download de
@@ -98,7 +100,7 @@ Instead follow these instructions:
 ### Word Embedding Models
 Download an English word embedding model from [here](https://nlp.stanford.edu/projects/glove/).
 We used the [Wikipedia 2014 + Gigaword5](http://nlp.stanford.edu/data/glove.6B.zip) word embedding model with 50 dimensions.
-For the German word embedding model, we used the on <https://devmount.github.io/GermanWordEmbeddings/>.
+For the German word embedding model, we used the provided on <https://devmount.github.io/GermanWordEmbeddings/>.
 The direct download link can be found [here](http://cloud.devmount.de/d2bc5672c523b086).
 
 After downloading both models, follow these steps to create a scipy version that can be imported into the project.
