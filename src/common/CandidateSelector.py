@@ -3,10 +3,6 @@ from collections import defaultdict
 from pke.data_structures import Candidate
 from typing import Callable
 from common.KeyphraseSelector import _MAPPING
-from itertools import chain
-from collections import OrderedDict
-
-from nltk import RegexpParser
 
 # Switch the key and values from _MAPPING
 _MIRRORED_MAPPING = y_dict2 = {y:x for x,y in _MAPPING.items()}

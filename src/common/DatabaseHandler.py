@@ -163,7 +163,7 @@ class DatabaseHandler:
             cursor = r.table('references').order_by(index=r.desc('id')).has_fields(reference_table).pluck(
                 reference_table, 'id').slice(self._current_index, self._current_index + batch_size).eq_join(
                 'id', r.table(table), ordered=True).zip().run(conn)
-            # cursor = [r.table('pos_tags').get("2730613").merge(r.table('references').get("2730613")).run(conn)]
+
             for document in cursor:
                 extractor, document = self.generate_document_object(model, document, **kwargs)
 

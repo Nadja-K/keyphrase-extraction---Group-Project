@@ -1,13 +1,6 @@
-import inspect
-
-import spacy
 from pke.base import LoadFile
 from pke.data_structures import Candidate
 from collections import defaultdict
-
-from common.CandidateSelector import CandidateSelector
-from common.DatabaseHandler import DatabaseHandler
-from common.KeyphraseSelector import KeyphraseSelector
 
 
 class KeyCluster(LoadFile):

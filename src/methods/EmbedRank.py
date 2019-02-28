@@ -55,9 +55,7 @@ class EmbedRank(LoadFile):
         valid_candidates_mask = ~np.all(self.phrase_embeddings == 0, axis=1)
         for candidate_tuple, keep in zip(sorted_candidates, valid_candidates_mask):
             term, candidate = candidate_tuple
-            # Note: do NOT write 'if keep is False', somehow this doesn't work???
             if keep == False:
-                # print("%s not found in sent2vec, removing candidate" % self.candidates[term].tokenized_form)
                 del self.candidates[term]
         self.phrase_embeddings = self.phrase_embeddings[valid_candidates_mask, :]
 
@@ -82,17 +80,12 @@ class EmbedRank(LoadFile):
                     candidate_column = candidate_column.rank(axis='index', ascending=False)
                     candidate_document_similarity_bias = (candidate_column.at['Current Document', 0] / candidate_column.max())[0]
                 else:
-                    # print("Candidate '%s' not found in document similarity data." % candidate.tokenized_form)
                     candidate_document_similarity_bias = document_similarity_new_candidate_constant
 
                 self.weights[term] = self.weights[term] * document_similarity_weights[0] + candidate_document_similarity_bias * document_similarity_weights[1]
-                # self.weights[term] = candidate_document_similarity_bias
 
             if global_covariance_matrix is not None:
                 mahalanobis_dist = cdist(candidate_embedding.reshape(1, -1), global_embedding_centroid, 'mahalanobis', VI=global_covariance_matrix)[0][0]
                 norm_mahalanobis_dist = mahalanobis_dist/31.443647329673244
-                # dist_list.append(mahalanobis_dist)
-                # dist = np.array(dist_list)
-                # print(dist.std(), dist.mean(), dist.min(), dist.max())
 
                 self.weights[term] = self.weights[term] * global_covariance_weights[0] + (1-norm_mahalanobis_dist) * global_covariance_weights[1]

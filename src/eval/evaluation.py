@@ -1,5 +1,5 @@
 """
- This class was written by Johannes Villmow.
+ This class was written by Johannes Villmow and modified by Nadja Kurz.
 """
 
 from typing import Callable, NamedTuple, Sequence, Set

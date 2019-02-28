@@ -3,7 +3,6 @@ from nltk.corpus import stopwords
 from string import punctuation
 import glob
 import os
-import logging
 from pke.unsupervised import (
     TopicRank, SingleRank,
     MultipartiteRank, PositionRank,
@@ -292,7 +291,6 @@ class KeyphraseExtractor:
             factor, params = self.get_param('factor', 1, **params)
             n_keyphrases = int(n_keyphrases * factor)
 
-        # print(params['num_clusters'], n_keyphrases)
         return extractor.get_n_best(n=n_keyphrases, redundancy_removal=redundancy_removal, stemming=(normalization == 'stemming')), extractor, params
 
     def _evaluate_document(self, model, input_document, references, evaluators, print_document_scores=True, **kwargs):
@@ -514,17 +512,3 @@ class KeyphraseExtractor:
                     break
         filtered_reference_keyphrases = set(filtered_reference_keyphrases)
         return filtered_reference_keyphrases
-
-
-
-#
-# def main():
-#     # Overwrite a few functions and variables so that the german language can be supported
-#     pke.LoadFile.normalize_POS_tags = custom_normalize_POS_tags
-#     pke.base.ISO_to_language['de'] = 'german'
-#
-#     custom_testing()
-#     # heise_eval()
-#
-
-

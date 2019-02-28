@@ -7,7 +7,6 @@ import sklearn.cluster
 import numpy as np
 from typing import Callable
 from abc import ABCMeta, abstractmethod
-import scipy.spatial.distance as ssd
 import seaborn as sns
 from sklearn.decomposition import PCA
 import time
@@ -34,7 +33,6 @@ class Clustering(metaclass=ABCMeta):
             if self.word_embedding_comp_func is sklearn.metrics.pairwise.cosine_similarity:
                 cluster_features = 1 - cluster_features
             elif self.word_embedding_comp_func is np.dot:
-                # FIXME: ensure that this is the correct way to turn this into a distance matrix
                 cluster_features = 1. / (cluster_features + 0.1)
             else:
                 logging.warning("The input matrix for the clustering was not re-calculated into a distance matrix. "
@@ -183,10 +181,8 @@ class HierarchicalClustering(Clustering):
                    labels=labels,
                    orientation='top',
                    leaf_font_size=12,
-                   # distance_sort='descending',
                    ax=axes,
                    link_color_func=lambda k: link_cols[k],
-                   # leaf_rotation=60.0
                    )
 
         for tick in axes.xaxis.get_major_ticks():
@@ -257,10 +253,3 @@ class SpectralClustering(Clustering):
             self._create_simple_cluster_visualization(cluster_features, labels, clusters.labels_, filename + "_spectral")
 
         return clusters.labels_
-
-
-class AffinityPropagation(Clustering):
-    def calc_clusters(self):
-        # FIXME
-        pass
-

@@ -6,18 +6,14 @@ from pke.unsupervised import (
 )
 
 from common.CandidateSelector import CandidateSelector, key_cluster_candidate_selector
+from common.KeyphraseExtractor import KeyphraseExtractor
+from common.helper import custom_normalize_POS_tags, compute_df, compute_global_cooccurrence
 from methods.KeyCluster import KeyCluster
 from methods.EmbedRank import EmbedRank
-
-from common.KeyphraseExtractor import KeyphraseExtractor
-
 from eval.evaluation import stemmed_wordwise_phrase_compare, stemmed_compare, word_compare, wordwise_phrase_compare
-
-from common.helper import custom_normalize_POS_tags, compute_df, compute_global_cooccurrence
 
 pke.base.ISO_to_language['de'] = 'german'
 pke.LoadFile.normalize_pos_tags = custom_normalize_POS_tags
-
 
 kwargs = {
     'language': 'en',
@@ -156,26 +152,6 @@ def custom_testing():
             print("%s %s %s" % (str(macro_precision).replace('.', ','), str(macro_recall).replace('.', ','), str(macro_f_score).replace('.', ',')))
             # print("%s - Macro average precision: %s, recall: %s, f-score: %s" % (key, macro_precision, macro_recall, macro_f_score))
 
-    # For testing with a single raw text file.
-    # for m in models:
-    #     keyphrases = extractor.extract_keyphrases(m, 'test_input.txt', **kwargs)
-    #     print(keyphrases)
-
-def extract_keyphrases_from_raw_text():
-    extractor = KeyphraseExtractor()
-    models = [
-        # KeyCluster,
-        # EmbedRank,
-        # TfIdf,
-        TopicRank,
-        # SingleRank,
-        # TextRank,
-        # KPMiner
-    ]
-
-    for m in models:
-        keyphrases = extractor.extract_keyphrases_from_raw_text(m, 'test_input.txt', **kwargs)
-        print(keyphrases)
 
 def collect_dataset_statistics():
     # some dataset statistic collection
@@ -219,48 +195,14 @@ def collect_dataset_statistics():
             keyphrase_length += len(keyphrase.split(' '))
             tmp = False
             for sent in extractor.sentences:
-                # keyphrase_list = [x.lower() for x in keyphrase.split(' ')]
-                # sent_list = [x.lower() for x in sent.stems]
-                #
-                # for i in range(len(sent_list) - len(keyphrase_list) - 1):
-                #     comp_res = stemmed_compare([' '.join(sent_list[i:i+len(keyphrase_list)]).lower()], [keyphrase])
-                #     if(comp_res.tp >= 1):
-                #         # print(keyphrase, sent_list[i:i+len(keyphrase_list)])
-                #         num_keyphrases_found +=1
-                #         tmp = True
-                #         break
-                #
-                # if tmp is True:
-                #     break
-
-                # keyphrase_list = [x.lower() for x in keyphrase.split(' ')]
-                # sent_list = [x.lower() for x in sent.stems]
-                #
-                # for i in range(len(sent_list) - len(keyphrase_list) - 1):
-                #     found = True
-                #     for j, keyword in enumerate(keyphrase_list):
-                #         if keyword in sent_list[i+j]:
-                #             continue
-                #         else:
-                #             found = False
-                #             break
-                #
-                #     if found == True:
-                #         num_keyphrases_found += 1
-                #         tmp = True
-                #         break
-                #
-                # if tmp is True:
-                #     break
-
                 if keyphrase_extractor._is_exact_match(keyphrase.lower(), ' '.join(sent.words).lower()):
-                # if keyphrase in ' '.join(sent.stems):
                     num_keyphrases_found +=1
                     tmp = True
                     break
             if tmp is False:
                 num_keyphrases_not_found += 1
                 print(keyphrase, file)
+
     print("#Keyphrases found in text: %s" % num_keyphrases_found)
     print("#Keyphrases not found in text: %s" % num_keyphrases_not_found)
     print("#Unique Keyphrases: %s" % len(unique_keyphrases))
@@ -282,7 +224,7 @@ def main():
 
     custom_testing()
     # collect_dataset_statistics()
-    # extract_keyphrases_from_raw_text()
+
 
 if __name__ == '__main__':
     main()

@@ -1,9 +1,8 @@
 from collections import defaultdict
 from string import punctuation
 
-from pandas import json
 from six.moves import cPickle as pickle #for performance
-from pke import compute_document_frequency, compute_lda_model, Candidate
+from pke import compute_document_frequency, Candidate
 from nltk.stem.snowball import SnowballStemmer
 import pke
 from nltk.tag.mapping import map_tag
@@ -13,7 +12,6 @@ import numpy as np
 import time
 import glob
 import string
-import json
 
 from sklearn.decomposition import PCA
 from matplotlib import pyplot as plt
@@ -72,8 +70,6 @@ def collect_keyphrase_data(context, selected_candidates):
         for sentence_id, surface_form in zip(candidate.sentence_ids, candidate.surface_forms):
             candidate_offsets = find_keyphrase_in_sentence(context.sentences[sentence_id], surface_form)
             data_canidate_keyphrases[term]['offsets'].extend(candidate_offsets)
-
-        # print(term, data_canidate_keyphrases[term]['offsets'], data_canidate_keyphrases[term]['words'])
 
     return data_canidate_keyphrases
 
@@ -182,9 +178,6 @@ def compute_df(input_dir, output_file, extension="xml"):
 
 
 def compute_db_document_frequency(output_file, dataset='heise', extension='xml', delimiter='\t', **kwargs):
-    language = kwargs.get('language', 'en')
-    normalization = kwargs.get('normalization', 'stemming')
-    window = kwargs.get('window', 2)
     n_grams = kwargs.get('n_grams', 3)
     stoplist = kwargs.get('stoplist', None)
     split = kwargs.get('split', None)
@@ -356,9 +349,9 @@ def load_document_similarity_data(input_data, **kwargs):
             else:
                 dataset = 'Heise'
 
-        print("Loading document similarity data for the %s data." % dataset)
-        similarity_data = pd.read_pickle(Path("data/document_similarity/" + dataset + "_similarity_dataframe"))
-        kwargs['document_similarity_data'] = similarity_data
+            print("Loading document similarity data for the %s data." % dataset)
+            similarity_data = pd.read_pickle(Path("data/document_similarity/" + dataset + "_similarity_dataframe"))
+            kwargs['document_similarity_data'] = similarity_data
 
     return kwargs
 
@@ -374,11 +367,11 @@ def load_global_covariance_matrix(input_data, **kwargs):
             else:
                 dataset = 'Heise'
 
-        print('Loading global covariance matrix data for the %s data.' % dataset)
-        global_covariance_matrix = np.load(f'data/mahalanobis_covariance/{dataset}_inv_covariance.npy')
-        global_embedding_centroid = np.load(f'data/mahalanobis_covariance/{dataset}_inv_covariance_centroid.npy').reshape(1, -1)
-        kwargs['global_covariance_matrix'] = global_covariance_matrix
-        kwargs['global_embedding_centroid'] = global_embedding_centroid
+            print('Loading global covariance matrix data for the %s data.' % dataset)
+            global_covariance_matrix = np.load(f'data/mahalanobis_covariance/{dataset}_inv_covariance.npy')
+            global_embedding_centroid = np.load(f'data/mahalanobis_covariance/{dataset}_inv_covariance_centroid.npy').reshape(1, -1)
+            kwargs['global_covariance_matrix'] = global_covariance_matrix
+            kwargs['global_embedding_centroid'] = global_embedding_centroid
 
     return kwargs
 
@@ -509,8 +502,6 @@ def _create_simple_embedding_visualization(data, labels, selected_candidates, do
     fig, ax = plt.subplots(figsize=(18, 10))
     ax.scatter(x[:-1], y[:-1], marker='o', c=colors, s=90)
     ax.scatter(x[-1], y[-1], marker='*', c='r', s=135)
-    # for i, txt in enumerate(labels):
-    #     ax.annotate(txt, (x[i], y[i]))
 
     _repel_labels(ax, x, y, labels, k=0.21)
 

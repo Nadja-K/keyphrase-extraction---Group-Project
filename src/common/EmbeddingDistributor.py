@@ -1,9 +1,7 @@
 # Based on EmbedRank, Swisscom (Schweiz) AG.
 # Original Authors: Kamil Bennani-Smires, Yann Savary
 
-
 import sent2vec
-
 
 class EmbeddingDistributor():
     def __init__(self, fasttext_model):

@@ -1,23 +1,16 @@
 import pke
-import sklearn
-import numpy as np
 from pke.unsupervised import TfIdf, TextRank, SingleRank, TopicRank, MultipartiteRank
 
 from common.CandidateSelector import key_cluster_candidate_selector, CandidateSelector
+from common.KeyphraseExtractor import KeyphraseExtractor
+from common.ClusterFeatureCalculator import WordEmbeddingsClusterFeature, PPMIClusterFeature
+from common.helper import custom_normalize_POS_tags, compute_global_cooccurrence, compute_db_document_frequency
 from methods.EmbedRank import EmbedRank
 from methods.KeyCluster import KeyCluster
-
-from common.KeyphraseExtractor import KeyphraseExtractor
-
-from common.ClusterFeatureCalculator import WordEmbeddingsClusterFeature, PPMIClusterFeature
 from eval.evaluation import stemmed_wordwise_phrase_compare, stemmed_compare, word_compare, wordwise_phrase_compare
-
-from common.helper import custom_normalize_POS_tags, compute_global_cooccurrence, compute_db_document_frequency
-
 
 pke.base.ISO_to_language['de'] = 'german'
 pke.LoadFile.normalize_pos_tags = custom_normalize_POS_tags
-
 
 kwargs = {
     'language': 'de',
@@ -115,22 +108,6 @@ def heise_eval():
             # print("%s - Macro average precision: %s, recall: %s, f-score: %s" % (
             # key, macro_precision, macro_recall, macro_f_score))
 
-def extract_keyphrases_from_raw_text():
-    extractor = KeyphraseExtractor()
-    models = [
-        # KeyCluster,
-        # EmbedRank,
-        TfIdf,
-        # TopicRank,
-        # SingleRank,
-        # TextRank,
-        # KPMiner
-    ]
-
-    for m in models:
-        keyphrases = extractor.extract_keyphrases_from_raw_text(m, 'test_input.txt', **kwargs)
-        print(keyphrases)
-
 
 def collect_dataset_statistics():
     # some dataset statistic collection
@@ -182,11 +159,9 @@ def collect_dataset_statistics():
 def main():
     # Overwrite a few functions and variables so that the german language can be supported
     pke.LoadFile.normalize_POS_tags = custom_normalize_POS_tags
-    # pke.LoadFile.get_n_best = custom_get_n_best
     pke.base.ISO_to_language['de'] = 'german'
 
     heise_eval()
-    # extract_keyphrases_from_raw_text()
     # collect_dataset_statistics()
 
 if __name__ == '__main__':

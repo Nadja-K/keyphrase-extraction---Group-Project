@@ -98,5 +98,4 @@ class KeyphraseSelector:
             for keyphrase in list(candidate_keyphrases.keys()):
                 if keyphrase in frequent_word_list:
                     del candidate_keyphrases[keyphrase]
-                    # print(keyphrase + " deleted")
             return candidate_keyphrases

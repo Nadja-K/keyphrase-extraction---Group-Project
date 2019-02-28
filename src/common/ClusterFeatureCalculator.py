@@ -115,8 +115,6 @@ class PPMIClusterFeature(CooccurrenceClusterFeature):
 
                     ppmi = max(np.log2((cooccurrence_count * num_words_total) / (word1_count * word2_count)), 0)
 
-                if np.isnan(ppmi):
-                    print(word1, word2, word1_count, word2_count, cooccurrence_count, num_words_total)
                 ppmi_matrix[index1][index2] = ppmi
         ppmi_matrix = ppmi_matrix + np.triu(ppmi_matrix, k=1).T
         return ppmi_matrix
