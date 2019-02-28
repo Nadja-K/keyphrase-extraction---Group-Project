@@ -28,4 +28,7 @@ FIXME
 
 ## Extracting keyphrases from a raw text
 * German example: FIXME
+** python src/extract_keyphrases_demo.py [path to .ini conf file] [path to .txt text input file]
+** We provide a sample input file: demo_input.txt
+
 * English example: FIXME

@@ -8,6 +8,7 @@ _MAPPING = {
     'ADV': 'ä',
     'ADP': 'A',
     'CONJ': 'c',
+    'CCONJ': 'C',
     'DET': 'd',
     'NUM': 'N',
     'PRT': 'P',
@@ -18,7 +19,8 @@ _MAPPING = {
     'SPACE': '',
     'PART': 'b',
     'AUX': 'B',
-    'SCONJ': 'l'
+    'SCONJ': 'l',
+    'INTJ': 'L'
 }
 
 
@@ -31,7 +33,7 @@ class KeyphraseSelector:
 
             # Create a simpler string representing the PoS Tags for the regex
             for pos in sentence.pos:
-                pos_tags = pos_tags + _MAPPING[pos]
+                pos_tags = pos_tags + _MAPPING.get(pos, 'u')
 
             # Use the regex from the original paper (JJ)*(NN|NNS|NNP)+
             for match in re.finditer(regex, pos_tags):

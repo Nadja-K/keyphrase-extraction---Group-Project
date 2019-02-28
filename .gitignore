@@ -1,7 +1,7 @@
 .idea/*
 experiments/*
 *.csv
-*.txt
+test_input.txt
 !requirements.txt
 data/*.tsv.gz
 cluster_graphs/*.png

@@ -1,10 +1,11 @@
 from common.CandidateSelector import CandidateSelector, key_cluster_candidate_selector
 from eval.evaluation import word_compare, stemmed_compare, wordwise_phrase_compare, stemmed_wordwise_phrase_compare
 from methods.KeyCluster import KeyCluster
+from methods.EmbedRank import EmbedRank
 from common.KeyphraseExtractor import KeyphraseExtractor
 import pke
 from common.helper import custom_normalize_POS_tags
-from common.ClusterFeatureCalculator import CooccurrenceClusterFeature, WordEmbeddingsClusterFeature
+from common.ClusterFeatureCalculator import CooccurrenceClusterFeature, WordEmbeddingsClusterFeature, PPMIClusterFeature
 from common.Cluster import HierarchicalClustering
 import numpy as np
 import csv
@@ -15,9 +16,12 @@ import sklearn
 _DATASETS = {
     # 'Inspec': {
     #     'train': "../ake-datasets/datasets/Inspec/train",
-    #     'test': "../ake-datasets/datasets/Inspec/test",
-    #     'reference_stemmed': "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json",
-    #     'reference_unstemmed': "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
+    #     'test': "../ake-datasets/datasets/Inspec/dev",
+    #     'reference_stemmed': "../ake-datasets/datasets/Inspec/references/dev.uncontr.stem.json",
+    #     'reference_unstemmed': "../ake-datasets/datasets/Inspec/references/dev.uncontr.json"
+    #     # 'test': "../ake-datasets/datasets/Inspec/test",
+    #     # 'reference_stemmed': "../ake-datasets/datasets/Inspec/references/test.uncontr.stem.json",
+    #     # 'reference_unstemmed': "../ake-datasets/datasets/Inspec/references/test.uncontr.json"
     # },
     # 'SemEval-2010': {
     #     'train':  "../ake-datasets/datasets/SemEval-2010/train",
@@ -25,47 +29,81 @@ _DATASETS = {
     #     'reference_stemmed': "../ake-datasets/datasets/SemEval-2010/references/test.combined.stem.json",
     #     'reference_unstemmed': "../ake-datasets/datasets/SemEval-2010/references/test.combined.json",
     # },
-    # 'DUC-2001': {
-    #     'train': "../ake-datasets/datasets/DUC-2001/train",
-    #     'test': "../ake-datasets/datasets/DUC-2001/test",
-    #     'reference_stemmed': "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json",
-    #     'reference_unstemmed': "../ake-datasets/datasets/DUC-2001/references/test.reader.json"
-    # }
-    'Heise': {
-        'split': 'dev'
+    'DUC-2001': {
+        'train': "../ake-datasets/datasets/DUC-2001/train",
+        'test': "../ake-datasets/datasets/DUC-2001/test",
+        'reference_stemmed': "../ake-datasets/datasets/DUC-2001/references/test.reader.stem.json",
+        'reference_unstemmed': "../ake-datasets/datasets/DUC-2001/references/test.reader.json"
     }
+    # 'Heise': {
+    #     'split': 'dev'
+    # }
 }
 
 standard_parameter_options = {
     'language': 'en',
     'normalization': "stemming",
-    'window': 2,
-    'method': 'ward',
-    'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
-    'cluster_method': HierarchicalClustering,
+    # 'window': 2,
+    # 'method': 'ward',
+    # 'candidate_selector': CandidateSelector(key_cluster_candidate_selector),
+    # 'cluster_method': HierarchicalClustering,
     'regex': 'a*n+',
     # 'cluster_calc': ,
-    'factor': 2/3,
-    'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',
-    'min_word_count': 1000,
-    'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',
-    'cluster_feature_calculator': CooccurrenceClusterFeature, #WordEmbeddingsClusterFeature,#PPMIClusterFeature,
-    'word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
+    # 'factor': 2/3,
+    # 'frequent_word_list_file': 'data/frequent_word_lists/en_50k.txt',
+    # 'min_word_count': 1000,
+    # 'word_embedding_model_file': '../word_embedding_models/english/Wikipedia2014_Gigaword5/la_vectors_glove_6b_50d',
+    # 'cluster_feature_calculator': PPMIClusterFeature,#CooccurrenceClusterFeature,#PPMIClusterFeature,#,#WordEmbeddingsClusterFeature,#, #,#,
+    # # 'word_embedding_comp_func': sklearn.metrics.pairwise.cosine_similarity,#np.dot,
     'evaluator_compare_func': [stemmed_compare, stemmed_wordwise_phrase_compare],
     'print_document_scores': False,
-    'write_to_db': False
+    'write_to_db': False,
+    'reference_table': 'stemmed_filtered_stemmed',
+
+    'sent2vec_model': '../word_embedding_models/english/sent2vec/wiki_bigrams.bin',
+    'document_similarity': False,
+    'document_similarity_new_candidate_constant': 1.0,
+    'document_similarity_weights': (1.0, 1.0),
+    'global_covariance': False,
 }
 
 changed_parameter_options = [
     {
-        'window': 2,
+        'document_similarity': True,
+        'document_similarity_new_candidate_constant': 0.0,
+        'document_similarity_weights': (1.0, 0.1),
+        'n_keyphrases': 10,
     },
-    # {
-    #     'window': 4
-    # },
     {
-        'cluster_feature_calculator': WordEmbeddingsClusterFeature
-    }
+        'document_similarity': True,
+        'document_similarity_new_candidate_constant': 1.0,
+        'document_similarity_weights': (1.0, 0.1),
+        'n_keyphrases': 10,
+    },
+    {
+        'document_similarity': True,
+        'document_similarity_new_candidate_constant': 0.5,
+        'document_similarity_weights': (1.0, 0.1),
+        'n_keyphrases': 10,
+    },
+    {
+        'document_similarity': True,
+        'document_similarity_new_candidate_constant': 0.3,
+        'document_similarity_weights': (1.0, 0.1),
+        'n_keyphrases': 10,
+    },
+    {
+        'document_similarity': True,
+        'document_similarity_new_candidate_constant': 0.8,
+        'document_similarity_weights': (1.0, 0.1),
+        'n_keyphrases': 10,
+    },
+    {
+        'document_similarity': True,
+        'document_similarity_new_candidate_constant': 0.1,
+        'document_similarity_weights': (1.0, 0.1),
+        'n_keyphrases': 10,
+    },
 ]
 
 
@@ -100,7 +138,7 @@ def evaluate_parameter_combinations(standard_parameter_options, parameter_combin
 
 def evaluate_each_parameter(updated_parameters, meta, csv_writer):
     extractor = KeyphraseExtractor()
-    model = KeyCluster
+    model = EmbedRank #KeyCluster
 
     num_runs_per_dataset = 0
     csv_row = []
@@ -125,7 +163,9 @@ def evaluate_each_parameter(updated_parameters, meta, csv_writer):
         macro_recall = evaluator_data['macro_recall']
         macro_f_score = evaluator_data['macro_f_score']
 
-        print("%s - Macro average precision: %s, recall: %s, f-score: %s" % (key, macro_precision, macro_recall, macro_f_score))
+        print("%s %s %s" % (str(macro_precision).replace('.', ','), str(macro_recall).replace('.', ','),
+                            str(macro_f_score).replace('.', ',')))
+        # print("%s - Macro average precision: %s, recall: %s, f-score: %s" % (key, macro_precision, macro_recall, macro_f_score))
         csv_row += [macro_precision, macro_recall, macro_f_score]
 
     csv_writer.writerow(csv_row)
