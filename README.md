@@ -6,6 +6,7 @@ TLDR: We re-implemented and modified two state-of-the-art unsupervised keyphrase
 ```
 project
 │   demo_input.txt
+│   README.md
 │
 └───data
 │   └───demo_confs
@@ -42,7 +43,6 @@ project
 │   │   ...
 │
 └───setup
-│   │   README.md
 │   │   requirements.txt
 │
 └───src
