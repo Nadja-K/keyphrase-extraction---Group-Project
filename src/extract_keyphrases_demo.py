@@ -8,6 +8,8 @@ import argparse
 import configparser
 from ast import literal_eval as make_tuple
 
+from pke.unsupervised import TopicRank, MultipartiteRank
+
 from common.CandidateSelector import key_cluster_candidate_selector, CandidateSelector
 from common.ClusterFeatureCalculator import PPMIClusterFeature, WordEmbeddingsClusterFeature, CooccurrenceClusterFeature
 from common.KeyphraseExtractor import KeyphraseExtractor
@@ -96,6 +98,12 @@ def load_config(config_file):
         kwargs['min_word_count'] = config.getint('Clustering', 'min_word_count')
         kwargs['factor'] = config.getfloat('Clustering', 'factor')
         kwargs['global_cooccurrence_constant'] = config.getfloat('Clustering', 'global_cooccurrence_constant')
+
+    elif kwargs['model'] == 'TopicRank':
+        kwargs['model'] = TopicRank
+
+    elif kwargs['model'] == 'MultipartiteRank':
+        kwargs['model'] = MultipartiteRank
 
     kwargs['print_document_scores'] = config['MISC'].getboolean('print_document_scores')
     kwargs['write_to_db'] = config['MISC'].getboolean('write_to_db')
