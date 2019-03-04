@@ -139,6 +139,7 @@ We also provide the two lists, that were used in this project, in the ```data```
 
 ### Global statistic matrices
 We calculated various global statistics for our modifications, depending on the dataset used. Because of their size, we can not provide the original files in this git. Instead please download them from cuda2.
+All files can be found in ```/video2/keyphrase_extraction/keyphrase_extraction_nadja/data/*```
 The files in question are the ones marked in the [Project Structure](#project-structure) Section.
 
 
