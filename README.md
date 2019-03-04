@@ -15,6 +15,10 @@ project
 │   │   │   en_embedrank.ini
 │   │   │   en_keycluster.ini
 │   │      
+│   └───document_frequency
+│   │   │   heise_train_df_counts.tsv.gz
+│   │   │   semEval_train_df_counts.tsv.gz
+│   │      
 │   └───document_similarity
 │   │   │   Heise_similarity_dataframe          [Needs to be downloaded separately]
 │   │   │   Inspec_similarity_dataframe         [Needs to be downloaded separately]

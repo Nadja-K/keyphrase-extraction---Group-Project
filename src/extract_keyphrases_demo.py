@@ -8,7 +8,7 @@ import argparse
 import configparser
 from ast import literal_eval as make_tuple
 
-from pke.unsupervised import TopicRank, MultipartiteRank
+from pke.unsupervised import TopicRank, MultipartiteRank, TfIdf
 
 from common.CandidateSelector import key_cluster_candidate_selector, CandidateSelector
 from common.ClusterFeatureCalculator import PPMIClusterFeature, WordEmbeddingsClusterFeature, CooccurrenceClusterFeature
@@ -104,6 +104,13 @@ def load_config(config_file):
 
     elif kwargs['model'] == 'MultipartiteRank':
         kwargs['model'] = MultipartiteRank
+
+    elif kwargs['model'] == 'TfIdf':
+        kwargs['model'] = TfIdf
+        if kwargs['language'] == 'de':
+            kwargs['frequency_file'] = 'data/document_frequency/heise_train_df_counts.tsv.gz'
+        elif kwargs['language'] == 'en':
+            kwargs['frequency_file'] = 'data/document_frequency/semEval_train_df_counts.tsv.gz'
 
     kwargs['print_document_scores'] = config['MISC'].getboolean('print_document_scores')
     kwargs['write_to_db'] = config['MISC'].getboolean('write_to_db')
