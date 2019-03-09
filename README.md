@@ -170,4 +170,16 @@ python src/extract_keyphrases_demo.py data/demo_confs/en_keycluster.ini demo_inp
 The config files provide default settings for the unmodified versions of KeyCluster and EmbedRank. 
 In order to test our modifications, refer to the config files and adjust the settings in there (especially paths 
 for files like the word embedding models, etc.).
+For example, to use our Word Embedding modification change 
+```
+[Clustering]
+cluster_feature_calculator = Cooccurrence
+```
+to
+ 
+```
+[Clustering]
+cluster_feature_calculator = WordEmbeddings
+```
+and adjust the word embedding path ```word_embedding_model_file``` if necessary.
 You can provide your own input text by editing ```demo_input.txt``` or providing your own file.
